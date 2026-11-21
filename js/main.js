@@ -40,7 +40,7 @@ function loadGame() {
   return true;
 }
 // ---------- 输入 ----------
-const KEYMAP = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right', z: 'ok', Z: 'ok', Enter: 'ok', ' ': 'ok', x: 'cancel', X: 'cancel', Escape: 'cancel', Backspace: 'cancel', '1': '1', '2': '2', '3': '3', '4': '4', h: 'hint', H: 'hint', m: 'map', M: 'map', q: 'stats', Q: 'stats' };
+const KEYMAP = { r: 'replay', R: 'replay', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right', z: 'ok', Z: 'ok', Enter: 'ok', ' ': 'ok', x: 'cancel', X: 'cancel', Escape: 'cancel', Backspace: 'cancel', '1': '1', '2': '2', '3': '3', '4': '4', h: 'hint', H: 'hint', m: 'map', M: 'map', q: 'stats', Q: 'stats' };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 window.addEventListener('keydown', e => {
   AudioSys.unlock();
@@ -65,10 +65,12 @@ cv.addEventListener('mousedown', ev => {
   const b = topButtons(), px = ev.clientX * DPR, py = ev.clientY * DPR;
   if (Math.hypot(px - b.snd.x, py - b.snd.y) < b.snd.r) { AudioSys.setMuted(!AudioSys.muted); G.volShow = 1.6; return; }
   if (Math.hypot(px - b.fs.x, py - b.fs.y) < b.fs.r) { toggleFS(); return; }
+  if (G.tutor) { const [x, y] = toUI(ev); tutorPointer(x, y); return; }
   if (G.quiz) { const [x, y] = toUI(ev); quizPointer(x, y, true); return; }
   if (G.dialog || (G.scene === 'battle' && G.battle && G.battle.mode === 'queue') || G.scene === 'evolve' || G.wheel || G.scene === 'title') onPress('ok');
 });
 function onPress(k) {
+  if (G.tutor) return tutorInput(k);
   if (G.quiz) return quizInput(k);
   if (G.trans > 0.3 && G.scene === 'battle') return;
   if (G.gradeUI) return gradeInput(k);
@@ -263,6 +265,7 @@ function update(dt) {
   if (G.fadeIn > 0) G.fadeIn = Math.max(0, G.fadeIn - dt * 1.6);
   if (AudioSys.started) { const mu = musicFor(); if (mu && AudioSys.current !== mu) AudioSys.play(mu); }
   if (G.toast) { G.toast.t -= dt; if (G.toast.t <= 0) G.toast = null; }
+  if (G.tutor) { updateTutor(dt); return; }
   updateQuiz(dt);
   if (G.trans > 0) G.trans = Math.max(0, G.trans - dt);
   else if (G.trans < 0) {
@@ -296,6 +299,7 @@ function draw() {
   }
   if (G.gradeUI) drawGradeUI();
   if (G.quiz) drawQuiz();
+  if (G.tutor) drawTutor();
   if (G.choice) drawChoice();
   if (G.wheel) drawWheel();
   if (G.dialog && G.scene !== 'world') drawDialogBox();
@@ -314,12 +318,16 @@ requestAnimationFrame(loop);
 window.__game = {
   G, MathQ, SPECIES, MOVES, OBJS, GATES, REGIONS, TOWNS, BUILDINGS, get MAP() { return MAP; },
   press: k => onPress(k),
-  answer: correct => { if (!G.quiz) return false; for (let i = 0; i < 3 && G.quiz && G.quiz.phase !== 'ask'; i++) { G.quiz.t = 9; quizContinue(); } if (!G.quiz || G.quiz.phase !== 'ask') return false; const q = G.quiz.q; quizAnswer(correct ? q.ans : (q.ans + 1) % 4); return true; },
+  answer: correct => { if (!G.quiz) return false; for (let i = 0; i < 4 && G.quiz && G.quiz.phase !== 'ask'; i++) { if (G.tutor) closeTutor(); G.quiz.t = 9; quizContinue(); if (G.tutor) closeTutor(); } if (!G.quiz || G.quiz.phase !== 'ask') return false; const q = G.quiz.q; quizAnswer(correct ? q.ans : (q.ans + 1) % 4); return true; },
   quizState: () => G.quiz && { phase: G.quiz.phase, q: G.quiz.q && G.quiz.q.q, ans: G.quiz.q && G.quiz.q.ans, i: G.quiz.i },
   teleport: (x, y, dir) => { Object.assign(G.player, { x, y, dir: dir || 'down', moving: false, prog: 0 }); W_CAM.init = false; markExplored(x, y); G.lastRid = ridAt(x, y); },
   quickStart: (sp, grade) => { G.grade = grade || 3; G.party = [makeMon(sp || 'fox', 5)]; G.party[0].dhp = G.party[0].hp; G.scene = 'world'; G.gradeUI = null; G.dialog = null; W_CAM.init = false; markExplored(G.player.x, G.player.y); },
   wild: (sp, lv) => { G.dialog = null; startBattle(makeMon(sp, lv)); },
-  finishQuiz: () => { for (let i = 0; i < 4 && G.quiz; i++) { G.quiz.t = 9; quizContinue(); } },
+  finishQuiz: () => { for (let i = 0; i < 6 && G.quiz; i++) { if (G.tutor) closeTutor(); G.quiz.t = 9; quizContinue(); if (G.tutor) closeTutor(); } },
+  tutor: () => G.tutor && { viz: G.tutor.X.viz, s: G.tutor.s, n: G.tutor.X.steps.length, kp: G.tutor.q.kp },
+  tutorFor: (kp, grade, match) => { let q; for (let i = 0; i < 400; i++) { q = MathQ.KP[kp].c ? MathQ.genKP(kp, grade || 4) : MathQ.genKP(kp, 0, i % 2); if (!match || Explain.build(q).viz === match) break; } openTutor(q, null); G.tutor.auto = false; return Explain.build(q).viz; },
+  tutorSet: (s, t) => { if (G.tutor) { G.tutor.s = s; G.tutor.t = t; G.tutor.T = 5; } },
+  closeTutor: () => closeTutor(),
   evolve: i => { const m = G.party[i || 0]; startEvoCutscene(m); },
   setTime: t => { if (G.evo) { G.evo.t = t - 0.001; } },
   openGate: id => { const g = GATES.find(g => g.id === id); if (g) openGate(g); },

@@ -269,6 +269,7 @@ function statsInput(k) {
   if (k === 'left' || k === 'right') { u.tab = 1 - u.tab; u.idx = 0; AudioSys.sfx('move'); return; }
   const n = u.tab === 0 ? statsRows().length : G.wrongBook.length;
   if (k === 'up') u.idx = Math.max(0, u.idx - 1); if (k === 'down') u.idx = Math.min(Math.max(0, n - 1), u.idx + 1);
+  if ((k === 'hint' || k === 'replay') && u.tab === 1 && G.wrongBook[u.idx]) { openTutor(G.wrongBook[u.idx], null); return; }
   if (k === 'ok') {
     const kp = u.tab === 0 ? (statsRows()[u.idx] || {}).kp : (G.wrongBook[u.idx] || {}).kp;
     if (!kp) return;
@@ -310,9 +311,9 @@ function drawStatsUI() {
       const yA = Math.max(470, 230 + qn * 46 + 30);
       mathText('正确答案：' + w.answer, 730, yA, 32, '#1a8a4a', 'left', '900');
       mathWrap('解析：' + w.exp, 730, yA + 60, 780, 26, 40, '#3a4870', '600');
-      text(w.fixed ? '已在之后答对，掌握啦！' : '还没掌握，按 Z 做同类题练习', 730, 800, 22, w.fixed ? '#1a8a4a' : '#c0402a', 'left', '800');
+      text(w.fixed ? '已在之后答对，掌握啦！按 H 再看星老师讲解' : '还没掌握：按 H 看星老师动画讲解，按 Z 做同类题练习', 730, 800, 22, w.fixed ? '#1a8a4a' : '#c0402a', 'left', '800');
     }
-    text('←→ 切换　↑↓ 选择　Z 同类题练习　X 返回', 800, 870, 21, '#aab8dd', 'center', '600');
+    text('←→ 切换　↑↓ 选择　H 动画讲解　Z 同类题练习　X 返回', 800, 870, 21, '#aab8dd', 'center', '600');
   }
 }
 function mathWrapCount(s, maxW, size) { const toks = String(s).match(/\{\d+\/\d+\}|[A-Za-z0-9.]+|./gu) || []; let n = 1, line = ''; for (const t of toks) { if (mathTextWidth(line + t, size, '800') > maxW && line) { n++; line = t; } else line += t; } return n; }

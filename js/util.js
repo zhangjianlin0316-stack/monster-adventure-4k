@@ -32,7 +32,7 @@ const ASSET_LIST = {
   npc_master: 'assets/npc_master.webp', npc_sage: 'assets/npc_sage.webp', npc_trainer_f: 'assets/npc_trainer_f.webp', npc_trainer_m: 'assets/npc_trainer_m.webp',
   npc_merchant: 'assets/npc_merchant.webp', npc_explorer: 'assets/npc_explorer.webp',
   cactus: 'assets/cactus.webp', pine_snow: 'assets/pine_snow.webp', snowpine: 'assets/snowpine.webp', boulder: 'assets/boulder.webp', lavarock: 'assets/lavarock.webp',
-  stele: 'assets/stele.webp', chest: 'assets/chest.webp', chest_gold: 'assets/chest_gold.webp', gate: 'assets/gate.webp', trophy: 'assets/trophy.webp'
+  stele: 'assets/stele.webp', chest: 'assets/chest.webp', chest_gold: 'assets/chest_gold.webp', gate: 'assets/gate.webp', trophy: 'assets/trophy.webp', teacher: 'assets/teacher.webp'
 };
 MON_KEYS.forEach(k => { ASSET_LIST[k] = 'assets/' + k + '.webp'; ASSET_LIST[k + '2'] = 'assets/' + k + '2.webp'; ASSET_LIST[k + '3'] = 'assets/' + k + '3.webp'; });
 const IMG = {}; let assetsDone = 0; const assetsFailed = [];

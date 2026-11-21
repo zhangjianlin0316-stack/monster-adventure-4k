@@ -53,6 +53,7 @@ function quizContinue() {
   if (Z.phase === 'intro') { quizNextQ(); return; }
   if (Z.phase === 'fb') {
     if (Z.t < 0.35) return;
+    if (!Z.fbOk && !Z.tutorDone) { Z.tutorDone = true; openTutor(Z.q, () => { Z.t = 0.4; }); return; }
     Z.i++;
     if (Z.i < Z.opts.count) { quizNextQ(); return; }
     if (Z.opts.count > 1) { Z.phase = 'sum'; Z.t = 0; AudioSys.sfx(Z.ok >= Z.opts.need ? 'victory_short' : 'statdown'); return; }
@@ -77,7 +78,7 @@ function useHint() {
 }
 function quizInput(k) {
   const Z = G.quiz; if (!Z) return;
-  if (Z.phase !== 'ask') { if (k === 'ok' || k === 'cancel') quizContinue(); return; }
+  if (Z.phase !== 'ask') { if (k === 'cancel' && Z.phase === 'fb' && !Z.fbOk) Z.tutorDone = true; if (k === 'ok' || k === 'cancel') quizContinue(); return; }
   if (['1', '2', '3', '4'].includes(k)) { quizAnswer(+k - 1); return; }
   if (k === 'hint') { useHint(); return; }
   const r = Math.floor(Z.sel / 2), c = Z.sel % 2; let n = Z.sel;
@@ -100,6 +101,7 @@ function updateQuiz(dt) {
   const Z = G.quiz; if (!Z) return;
   Z.t += dt; if (Z.phase === 'ask') { const before = Z.elapsed; Z.elapsed += dt; if (Z.limit - Z.elapsed < 5 && Math.floor(before) !== Math.floor(Z.elapsed) && Z.elapsed < Z.limit) AudioSys.sfx('tick'); }
   if (Z.phase === 'fb' && Z.fbOk && Z.opts.count === 1 && Z.t > 1.7) quizContinue();
+  if (Z.phase === 'fb' && !Z.fbOk && !Z.tutorDone && Z.t > 1.6 && !G.tutor) quizContinue();
 }
 const SRC_COLOR = { battle: '#ff8a5a', catch: '#7ff0e2', evo: '#ffcf5a', gate: '#8ab4ff', gold: '#ffd23a', stele: '#b9a4ff', master: '#ff9ad0', chest: '#9affb8', duel: '#ff6a8a', review: '#9fe8ff' };
 function drawQuiz() {
