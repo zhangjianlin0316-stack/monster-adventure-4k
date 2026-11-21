@@ -11,7 +11,7 @@ const G = {
   dialog: null, choice: null, menu: null, partyUI: null, bagUI: null, shopUI: null, mapUI: false, statsUI: null, gradeUI: null, quiz: null, wheel: null, evo: null,
   toast: null, trans: 0, battle: null, held: [], lastCenter: { x: SPAWN.x, y: SPAWN.y }, volShow: 0, fadeIn: 0, pendingEnc: null, moveCD: 0
 };
-function cleanMon(m) { const o = { sp: m.sp, lvl: m.lvl, xp: m.xp, hp: m.hp, moves: m.moves.map(x => ({ id: x.id, pp: x.pp })), status: null, evoReady: !!m.evoReady }; return o; }
+function cleanMon(m) { const o = { sp: m.sp, lvl: m.lvl, xp: m.xp, hp: m.hp, moves: m.moves.map(x => ({ id: x.id, pp: x.pp })), status: null, evoReady: !!m.evoReady }; if (m.shiny) o.shiny = true; return o; }
 function healAll() { G.party.forEach(healMon); }
 function newGame() {
   genWorld(); CHUNKS.clear(); MINI = null; FOG_DIRTY = true;
@@ -40,7 +40,7 @@ function loadGame() {
   return true;
 }
 // ---------- 输入 ----------
-const KEYMAP = { r: 'replay', R: 'replay', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right', z: 'ok', Z: 'ok', Enter: 'ok', ' ': 'ok', x: 'cancel', X: 'cancel', Escape: 'cancel', Backspace: 'cancel', '1': '1', '2': '2', '3': '3', '4': '4', h: 'hint', H: 'hint', m: 'map', M: 'map', q: 'stats', Q: 'stats' };
+const KEYMAP = { r: 'replay', R: 'replay', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right', z: 'ok', Z: 'ok', Enter: 'ok', ' ': 'ok', x: 'cancel', X: 'cancel', Escape: 'cancel', Backspace: 'cancel', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', h: 'hint', H: 'hint', m: 'map', M: 'map', q: 'stats', Q: 'stats', p: 'dex', P: 'dex' };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 window.addEventListener('keydown', e => {
   AudioSys.unlock();
@@ -85,6 +85,7 @@ function onPress(k) {
   if (G.choice) return choiceInput(k);
   if (G.dialog) return dialogInput(k);
   if (G.shopUI) return shopInput(k);
+  if (G.dexUI) return dexInput(k);
   if (G.statsUI) return statsInput(k);
   if (G.mapUI) { if (k === 'map' || k === 'cancel' || k === 'ok') G.mapUI = false; return; }
   if (G.partyUI) return partyInput(k);
@@ -94,6 +95,7 @@ function onPress(k) {
   if (k === 'ok') interact();
   else if (k === 'cancel') { G.menu = { idx: 0, t0: NOW }; AudioSys.sfx('confirm'); }
   else if (k === 'map') G.mapUI = true;
+  else if (k === 'dex') G.dexUI = { idx: 0 };
   else if (k === 'stats') G.statsUI = { tab: G.wrongBook.length ? 1 : 0, idx: 0 };
 }
 function starterInput(k) {
@@ -176,6 +178,18 @@ function interactObj(o) {
       else say('好难的题！宝箱还在这里，随时可以再来挑战。');
     })); return;
   }
+  if (o.type === 'shrine') {
+    const S = SPECIES[o.sp];
+    if (done) { say(o.name + '静悄悄的，传说中的' + S.n + '已经离开了这里。'); return; }
+    say([o.name + '：古老的神社里回荡着神秘的气息……', '石碑上写着：「解开三道金色竞赛题中的两道，传说灵兽便会现身。」'], () => openChoice('要接受金色竞赛试炼吗？', ['接受试炼', '下次再来'], i => {
+      if (i) return;
+      startQuiz({ source: 'gold', count: 3, need: 2, forceComp: true, title: '金色竞赛试炼 · ' + o.name, sub: '3 道竞赛题答对 2 道，传说灵兽就会现身！' }, res => {
+        if (!res.pass) { say('神社的光芒暗了下去……答对了 ' + res.ok + ' 题。复习错题后再来挑战吧！'); return; }
+        AudioSys.sfx('gold');
+        say(['神社发出耀眼的金光！', '传说中的' + S.n + '现身了！'], () => { const m = makeMon(o.sp, o.lv); G.legendObj = o.id; startBattle(m, { legend: true }); });
+      });
+    })); return;
+  }
   if (o.type === 'stele') {
     if (done) { say('石碑上的文字已经暗淡下来了。'); return; }
     say('古老的谜题石碑上刻着一道题……', () => startQuiz({ source: 'stele', count: 1, theme: 'logic', title: '谜题石碑', sub: '解开石碑上的谜题！' }, res => {
@@ -215,7 +229,7 @@ function doorAction(x, y) {
 function pickWild() {
   const R = curRegion(); const tot = R.pool.reduce((s, e) => s + e[1], 0); let r = Math.random() * tot, sp = R.pool[0][0];
   for (const [id, w] of R.pool) { r -= w; if (r <= 0) { sp = id; break; } }
-  return makeMon(sp, rint(R.lv[0], R.lv[1]));
+  const m = makeMon(sp, rint(R.lv[0], R.lv[1])); if (Math.random() < 1 / 64) m.shiny = true; return m;
 }
 function onStep() {
   const p = G.player; markExplored(p.x, p.y);
@@ -238,13 +252,13 @@ function updateWorld(dt) {
   if (G.pendingEnc) { G.pendingEnc.t -= dt; if (G.pendingEnc.t <= 0) { const m = G.pendingEnc.mon; G.pendingEnc = null; startBattle(m); } return; }
   if (G.dialog) { G.dialog.chars += dt * 45; }
   if (G.wheel) updateWheel(dt);
-  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.gradeUI || G.quiz || G.wheel) { if (!p.moving) return; }
+  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.gradeUI || G.quiz || G.wheel) { if (!p.moving) return; }
   if (p.moving) {
     p.prog += dt / (p.run ? 0.12 : 0.2);
     if (p.prog >= 1) { p.moving = false; p.prog = 0; onStep(); }
     else return;
   }
-  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.gradeUI || G.quiz || G.wheel || G.pendingEnc) return;
+  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.gradeUI || G.quiz || G.wheel || G.pendingEnc) return;
   if (G.queued) { const k = G.queued; G.queued = null; onPress(k); return; }
   const k = G.held[G.held.length - 1];
   if (!k) return;
@@ -293,6 +307,7 @@ function draw() {
       if (G.shopUI) drawShopUI();
       if (G.mapUI) drawMapScreen();
       if (G.statsUI) drawStatsUI();
+      if (G.dexUI) drawDexUI();
       break;
     case 'battle': drawBattle(); break;
     case 'evolve': drawEvolve(); break;
@@ -333,5 +348,10 @@ window.__game = {
   openGate: id => { const g = GATES.find(g => g.id === id); if (g) openGate(g); },
   freezeAt: (side, frac, cut) => { G.freeze = { side, frac, cut }; G.timeScale = 1; },
   resume: () => { G.freeze = null; G.timeScale = 3; },
+  cast: (side, id, res) => { const B = G.battle; if (!B) return; B.queue = []; B.cur = null; B.anim = null; B.mode = 'queue'; Q(act(side, id, 0, res || null), fn(() => { B.mode = 'menu'; })); },
+  setParty: (sp, lv) => { const m = makeMon(sp, lv); m.dhp = m.hp; G.party[0] = m; if (G.battle) G.battle.pi = 0; },
+  gauge: (p, e) => { if (G.battle) { G.battle.gauge.p = p; G.battle.gauge.e = e; } },
+  battleState: () => G.battle && { mode: G.battle.mode, cur: G.battle.cur && G.battle.cur.type, anim: G.battle.anim && G.battle.anim.move, quiz: !!G.quiz },
+  dex: (idx) => { G.dexUI = { idx: idx || 0 }; },
   ridAt, scene: () => G.scene
 };

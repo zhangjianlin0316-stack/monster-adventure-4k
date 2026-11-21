@@ -34,7 +34,9 @@ const ASSET_LIST = {
   cactus: 'assets/cactus.webp', pine_snow: 'assets/pine_snow.webp', snowpine: 'assets/snowpine.webp', boulder: 'assets/boulder.webp', lavarock: 'assets/lavarock.webp',
   stele: 'assets/stele.webp', chest: 'assets/chest.webp', chest_gold: 'assets/chest_gold.webp', gate: 'assets/gate.webp', trophy: 'assets/trophy.webp', teacher: 'assets/teacher.webp'
 };
-MON_KEYS.forEach(k => { ASSET_LIST[k] = 'assets/' + k + '.webp'; ASSET_LIST[k + '2'] = 'assets/' + k + '2.webp'; ASSET_LIST[k + '3'] = 'assets/' + k + '3.webp'; });
+const MON_KEYS2 = { moth: 3, otter: 3, owl: 3, cat: 3, golem: 3, dragon: 3, crane: 2, koi: 2, tanuki: 2, qilin: 1, whale: 1, zhulong: 1 };
+MON_KEYS.forEach(k => MON_KEYS2[k] = 3);
+for (const k in MON_KEYS2) for (let s = 0; s < MON_KEYS2[k]; s++) ASSET_LIST[s ? k + (s + 1) : k] = 'assets/' + (s ? k + (s + 1) : k) + '.webp';
 const IMG = {}; let assetsDone = 0; const assetsFailed = [];
 const ASSET_TOTAL = Object.keys(ASSET_LIST).length;
 for (const k in ASSET_LIST) {
@@ -66,6 +68,7 @@ function scaled(key, w, h) {
 const FLASH_CANVAS = document.createElement('canvas');
 // 绘制灵兽插画：x,y 为脚底中心；size 为最长边像素
 // opt: alpha, flash(0-1), flashColor, back(镜像), breathe, phase, t, sx/sy(挤压拉伸), rot, silhouette(纯色剪影颜色)
+const SHINY_HUE = { fox: 200, turtle: 140, fawn: 250, volt: 180, bunny: 300, bird: 120, lizard: 160, jelly: 90, shroom: 200, beetle: 140, seal: 300, rock: 180, moth: 160, otter: 60, owl: 200, cat: 120, golem: 240, dragon: 180, crane: 40, koi: 180, tanuki: 250, qilin: 140, whale: 260, zhulong: 150 };
 function drawCreature(c, sp, x, y, size, opt) {
   opt = opt || {};
   const im = IMG[sp];
@@ -80,6 +83,7 @@ function drawCreature(c, sp, x, y, size, opt) {
   const m = c.getTransform(), dev = Math.hypot(m.a, m.b);
   c.save();
   if (opt.alpha !== undefined) c.globalAlpha *= opt.alpha;
+  if (opt.shiny) c.filter = 'hue-rotate(' + (SHINY_HUE[info.line] || 150) + 'deg) saturate(1.25) brightness(1.05)';
   const floaty = info.floaty ? -size * 0.08 + Math.sin(t * 1.6) * size * 0.025 : 0;
   c.translate(x, y + floaty);
   if (opt.rot) { c.translate(0, -h / 2); c.rotate(opt.rot); c.translate(0, h / 2); }

@@ -92,7 +92,7 @@ function dialogInput(k) {
   if (D.i >= D.lines.length) { G.dialog = null; if (D.after) D.after(); }
 }
 // ---------- 主菜单 ----------
-const MENU_OPTS = ['队伍', '背包', '世界地图', '错题本与统计', '年级与竞赛', '保存', '读取', '关闭'];
+const MENU_OPTS = ['队伍', '背包', '灵兽图鉴', '世界地图', '错题本与统计', '年级与竞赛', '保存', '读取', '关闭'];
 function drawMenu() {
   beginUI();
   const n = MENU_OPTS.length, h = 60 + n * 70, sl = clamp((NOW - (G.menu.t0 || 0)) * 6, 0, 1), ox = (1 - sl) * 80;
@@ -111,6 +111,7 @@ function menuInput(k) {
   const o = MENU_OPTS[M.idx];
   if (o === '队伍') G.partyUI = { idx: 0, mode: 'world', sel: null, sub: null };
   if (o === '背包') G.bagUI = { idx: 0, ctx: 'world' };
+  if (o === '灵兽图鉴') { G.menu = null; G.dexUI = { idx: 0 }; }
   if (o === '世界地图') { G.menu = null; G.mapUI = true; }
   if (o === '错题本与统计') { G.menu = null; G.statsUI = { tab: 0, idx: 0, scroll: 0 }; }
   if (o === '年级与竞赛') { G.menu = null; G.gradeUI = { grade: G.grade, comp: G.comp, row: 0, setup: false }; }

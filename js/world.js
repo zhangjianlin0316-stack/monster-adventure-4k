@@ -4,19 +4,19 @@ const W = 150, H = 110;
 const T = { GROUND: 0, TALL: 1, TREE: 2, WATER: 3, PATH: 4, FLOWER: 5, FENCE: 6, BUILD: 7, DOOR: 8, SIGN: 9, GATE: 10, BRIDGEX: 11, BRIDGE: 12, STONE: 13, LAVA: 14, CLIFF: 15 };
 const REGIONS = [
   { id: 'meadow', n: '翠风原野', seed: [75, 93], wgt: 1.0, lv: [2, 6], theme: 'calc', bg: 'bg_meadow', song: 'route', dens: 0.64, grass: 0.59,
-    pool: [['bunny', 30], ['bird', 30], ['shroom', 18], ['volt', 12], ['fawn', 4], ['fox', 3], ['turtle', 3]] },
+    pool: [['bunny', 28], ['bird', 28], ['shroom', 16], ['volt', 10], ['moth', 14], ['otter', 8], ['fawn', 4], ['fox', 3], ['turtle', 3], ['cat', 1]] },
   { id: 'flower', n: '花海草原', seed: [80, 57], wgt: 1.0, lv: [5, 10], theme: 'measure', bg: 'bg_flower', song: 'route', dens: 0.7, grass: 0.58,
-    pool: [['bunny', 24], ['bird', 22], ['fawn', 14], ['shroom', 14], ['volt', 14], ['jelly', 6], ['bunny2', 3], ['bird2', 3]] },
+    pool: [['bunny', 20], ['bird', 18], ['fawn', 12], ['shroom', 12], ['volt', 10], ['moth', 14], ['tanuki', 6], ['jelly', 5], ['crane', 2], ['bunny2', 3], ['bird2', 3]] },
   { id: 'lake', n: '镜湖湖畔', seed: [27, 84], wgt: 1.0, lv: [7, 12], theme: 'frac', bg: 'bg_lake', song: 'lake', dens: 0.66, grass: 0.58,
-    pool: [['turtle', 18], ['jelly', 26], ['seal', 16], ['volt', 14], ['bird', 16], ['jelly2', 4]] },
+    pool: [['turtle', 14], ['jelly', 22], ['seal', 12], ['otter', 18], ['koi', 10], ['volt', 8], ['bird', 10], ['crane', 2], ['dragon', 1], ['jelly2', 4]] },
   { id: 'forest', n: '幽暗森林', seed: [28, 45], wgt: 1.0, lv: [9, 15], theme: 'logic', bg: 'bg_forest', song: 'forest', dens: 0.5, grass: 0.55,
-    pool: [['shroom', 26], ['beetle', 24], ['fawn', 14], ['bunny', 10], ['lizard', 10], ['shroom2', 6], ['beetle2', 4]] },
+    pool: [['shroom', 22], ['beetle', 20], ['fawn', 12], ['tanuki', 10], ['moth', 10], ['lizard', 8], ['owl', 6], ['cat', 2], ['shroom2', 6], ['beetle2', 4]] },
   { id: 'desert', n: '赤砂峡谷', seed: [124, 66], wgt: 1.0, lv: [13, 20], theme: 'geo', bg: 'bg_desert', song: 'desert', dens: 0.66, grass: 0.6,
-    pool: [['rock', 28], ['lizard', 22], ['beetle', 14], ['bird2', 14], ['fox', 8], ['rock2', 6], ['lizard2', 4]] },
+    pool: [['rock', 24], ['lizard', 20], ['golem', 12], ['beetle', 12], ['bird2', 12], ['fox', 7], ['otter2', 4], ['rock2', 6], ['lizard2', 4], ['dragon', 1]] },
   { id: 'snow', n: '霜冠雪山', seed: [55, 14], wgt: 1.0, lv: [18, 26], theme: 'frac', bg: 'bg_snow', song: 'snow', dens: 0.62, grass: 0.58,
-    pool: [['seal', 24], ['seal2', 12], ['volt2', 14], ['bunny2', 14], ['rock', 12], ['jelly2', 10], ['turtle2', 6]] },
+    pool: [['seal', 20], ['owl', 14], ['seal2', 10], ['volt2', 12], ['bunny2', 12], ['rock', 10], ['jelly2', 8], ['golem2', 4], ['turtle2', 5], ['owl2', 3], ['crane', 2]] },
   { id: 'volcano', n: '炎心火山', seed: [123, 19], wgt: 1.0, lv: [24, 32], theme: 'logic', bg: 'bg_volcano', song: 'volcano', dens: 0.64, grass: 0.59,
-    pool: [['lizard2', 24], ['fox2', 14], ['rock2', 18], ['beetle2', 14], ['lizard', 14], ['volt2', 8], ['lizard3', 2]] }
+    pool: [['lizard2', 22], ['fox2', 12], ['rock2', 16], ['golem2', 10], ['beetle2', 12], ['lizard', 12], ['volt2', 6], ['moth2', 6], ['dragon2', 1], ['lizard3', 2]] }
 ];
 const RIDX = {}; REGIONS.forEach((r, i) => RIDX[r.id] = i);
 // 地区之间的通道：type = open(开放) / gate(数学之门) / bridge(断桥)
@@ -316,6 +316,8 @@ function placeObjects(rng) {
       add({ type: 'trainer', id: 't_' + R.id + i, x: p[0], y: p[1], region: R.id, img: female ? 'npc_trainer_f' : 'npc_trainer_m', name: (female ? '训练师 ' : '探险家 ') + TRAINER_NAMES[(ri * 3 + i) % TRAINER_NAMES.length], team, stars: 6 + ri * 3 });
     }
   });
+  // 传说灵兽的神社：金色竞赛试炼后才会现身
+  [['forest', 'qilin', 36, '雷鸣古神社'], ['lake', 'whale', 38, '云海星祠'], ['volcano', 'zhulong', 42, '烛火神殿']].forEach(([rid, sp, lv, name]) => { const p = openSpot(rid, rng, 10, reach); if (p) add({ type: 'shrine', id: 'shrine_' + sp, x: p[0], y: p[1], region: rid, sp, lv, name }); });
   // 地标：火山之巅的金星奖杯
   const vt = townOf('volcano'); add({ type: 'trophy', id: 'trophy', x: vt.x + 5, y: vt.y + 2, region: 'volcano' });
   // 物体所在格设为可通行地面

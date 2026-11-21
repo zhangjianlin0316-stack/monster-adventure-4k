@@ -23,12 +23,16 @@ function startBattle(enemy, opts) {
     enemy, pi: pi < 0 ? 0 : pi, mode: 'queue', queue: [], cur: null, menu: 0, moveIdx: 0, trainer: opts.trainer || null, team: opts.team || [],
     anim: null, stages: { p: { atk: 0, def: 0, spd: 0 }, e: { atk: 0, def: 0, spd: 0 } }, over: false, runs: 0,
     showP: false, showE: true, caught: false, t: 0, end: null, bg: R.bg, theme: R.theme,
-    rings: [], nums: [], stars: [], stamps: [], shake: 0, flash: 0, hitStop: 0, cam: { kz: 0, kx: 0, ky: 0 }, react: { p: null, e: null }, weather: null, speedLines: 0,
-    victory: false, correct: 0, asked: 0, enemyWeak: false, part: new Set(), lvPanel: null
+    rings: [], nums: [], stars: [], stamps: [], shake: 0, flash: 0, hitStop: 0, cam: { kz: 0, kx: 0, ky: 0, rot: 0 }, react: { p: null, e: null }, weather: null, speedLines: 0,
+    victory: false, correct: 0, asked: 0, enemyWeak: false, part: new Set(), lvPanel: null,
+    gauge: { p: 0, e: (opts.trainer ? 25 : 0) + (SPECIES[enemy.sp].rar === 'legend' ? 60 : 0) }, combo: null, slow: 0, impact: null, gaugeFull: {}
   };
+  G.flags.seen = G.flags.seen || {}; G.flags.seen[enemy.sp] = 1; (opts.team || []).forEach(m => G.flags.seen[m.sp] = 1);
+  B.legend = !!opts.legend;
   G.trans = 1.2; G.held = []; G.menu = null; G.dialog = null; G.choice = null;
   G.scene = 'battle';
-  const intro = B.trainer ? [msg(B.trainer.name + '向你发起了数学对决！'), msg(B.trainer.name + '派出了' + nameOf(enemy) + '！')] : [msg('野生的' + nameOf(enemy) + '跳出来了！')];
+  const R2 = SPECIES[enemy.sp].rar, rarTxt = R2 === 'legend' ? '传说中的' : R2 === 'epic' ? '史诗级的' : R2 === 'rare' ? '稀有的' : '';
+  const intro = B.trainer ? [msg(B.trainer.name + '向你发起了数学对决！'), msg(B.trainer.name + '派出了' + nameOf(enemy) + '！')] : [msg(R2 === 'legend' ? '传说灵兽' + nameOf(enemy) + '降临了！' : (enemy.shiny ? '✦闪闪发光的异色' : '') + '野生的' + rarTxt + nameOf(enemy) + '跳出来了！')];
   Q(...intro, fn(() => { B.showP = true; B.part.add(B.pi); }), anim('send', 'p', 'normal', 0.5), msg('去吧，' + nameOf(active()) + '！'),
     ...(B.trainer ? [msg('【数学对决】答对题目不仅威力大增，还能压制对手下一次的攻势！')] : []), fn(() => B.mode = 'menu'));
 }
@@ -56,9 +60,17 @@ function battleInput(k) {
       if (B.menu === 3) battleRun();
     }
   } else if (B.mode === 'moves') {
-    const n = active().moves.length;
-    if (['up', 'down', 'left', 'right'].includes(k)) B.moveIdx = grid(B.moveIdx, k, n);
+    const n = active().moves.length, ultOk = B.gauge.p >= 100;
+    if (B.moveIdx === 4) { if (k === 'left' || k === 'up' || k === 'down') B.moveIdx = Math.min(1, n - 1); }
+    else if (k === 'right' && ultOk && (B.moveIdx % 2 === 1 || n === 1)) B.moveIdx = 4;
+    else if (['up', 'down', 'left', 'right'].includes(k)) B.moveIdx = grid(B.moveIdx, k, n);
+    if (k === '5' && ultOk) B.moveIdx = 4;
     if (k === 'cancel') B.mode = 'menu';
+    if (k === 'ok' && B.moveIdx === 4 && ultOk) {
+      const uid = SPECIES[active().sp].ult; B.mode = 'quiz';
+      startQuiz({ source: 'battle', count: 2, need: 2, title: '奥义答题：' + MOVES[uid].n, sub: '连答两题！全对：奥义全力爆发（必定会心）；答错会削弱奥义威力', theme: B.theme, forceComp: G.comp }, res => { B.mathRes = res; battleTurn(4); });
+      return;
+    }
     if (k === 'ok') {
       const mv = active().moves[B.moveIdx];
       if (mv.pp <= 0) { toast('这个招式的PP用完了！'); return; }
@@ -68,14 +80,15 @@ function battleInput(k) {
   }
 }
 function enemyMove() {
-  const e = G.battle.enemy, p = active();
+  const B = G.battle, e = B.enemy, p = active();
+  if (B.gauge.e >= 100 && (B.trainer || SPECIES[e.sp].rar === 'legend' || SPECIES[e.sp].rar === 'epic' || Math.random() < 0.6)) return SPECIES[e.sp].ult;
   const dmg = e.moves.filter(m => MOVES[m.id].p > 0);
   if (dmg.length && Math.random() < 0.45) { let best = dmg[0]; dmg.forEach(m => { if (MOVES[m.id].p * effOf(MOVES[m.id].t, SPECIES[p.sp].t) > MOVES[best.id].p * effOf(MOVES[best.id].t, SPECIES[p.sp].t)) best = m; }); return best.id; }
   return e.moves[rint(0, e.moves.length - 1)].id;
 }
 function battleTurn(mi) {
   const B = G.battle, p = active(), e = B.enemy;
-  const pm = p.moves[mi].id, em = enemyMove();
+  const pm = mi === 4 ? SPECIES[p.sp].ult : p.moves[mi].id, em = enemyMove();
   const pp = MOVES[pm].prio || 0, ep = MOVES[em].prio || 0;
   const ps = stats(p).spd * stageMul(B.stages.p.spd) * (p.status === 'para' ? 0.5 : 1), es = stats(e).spd * stageMul(B.stages.e.spd) * (e.status === 'para' ? 0.5 : 1);
   const pFirst = pp !== ep ? pp > ep : (ps !== es ? ps > es : Math.random() < 0.5);
@@ -83,8 +96,10 @@ function battleTurn(mi) {
   const res = B.mathRes; B.mathRes = null;
   if (res) {
     B.asked++;
+    if (mi === 4) { B.correct += res.ok || 0; B.asked += (res.n || 1) - 1; }
+    if (res.correct && mi !== 4) addGauge(B, 'p', 25 + (res.fast ? 10 : 0) + (res.comp ? 10 : 0));
     if (res.correct) {
-      B.correct++;
+      if (mi !== 4) B.correct++;
       if (G.streak >= 2) addStamp(B, '连击 ×' + G.streak + '！', '#7ff0e2');
       if (B.trainer) B.enemyWeak = true;
     }
@@ -94,8 +109,13 @@ function battleTurn(mi) {
   Q(fn(endOfTurn), fn(endTurn));
 }
 function endTurn() { const B = G.battle; if (B && !B.over) B.mode = 'menu'; }
-function mathMult(res) {
+function mathMult(res, ult) {
   if (!res) return { m: 1, crit: 0, text: null };
+  if (ult) {
+    if (res.pass) return { m: 1.5, crit: 1, text: '两题全对！灵力全开，奥义完美发动！' };
+    if (res.ok) return { m: 1.0, crit: 0.3, text: '答对了一题，奥义发动了！' };
+    return { m: 0.6, crit: 0, text: '答错了……灵力不稳，奥义威力减弱了。' };
+  }
   if (!res.correct) return { m: 0.6, crit: 0, text: '答错了……招式威力减弱了。' };
   const combo = Math.min(5, Math.max(0, G.streak - 1));
   let m = 1.3 + combo * 0.1 + (res.fast ? 0.1 : 0) + (res.comp ? 0.2 : 0);
@@ -114,8 +134,19 @@ function act(side, moveId, mi, res) {
     // 状态异常：行动前判定
     if (att.status === 'frz') { if (Math.random() < 0.3) { att.status = null; steps.push(msg(an + '身上的冰融化了！')); } else { QF(msg(an + '被冻住了，无法行动！')); return; } }
     if (att.status === 'para' && Math.random() < 0.25) { QF(anim('status', side, 'electric', 0.5), msg(an + '身体麻痹，无法行动！')); return; }
-    if (side === 'p') att.moves[mi].pp--;
-    const mm = side === 'p' ? mathMult(res) : { m: 1, crit: 0 };
+    // 对手奥义：先答题防御
+    if (side === 'e' && mv.ult && !B.defPending) {
+      B.defPending = true; B.gauge.e = 0;
+      QF(msg(an + '正在凝聚灵力……是奥义！'), msg('快答题防御！答对可以化解大部分伤害！'),
+        fn(() => { B.mode = 'quiz'; startQuiz({ source: 'battle', count: 1, title: '奥义防御：' + mv.n, sub: '答对：结出灵力护盾，伤害大幅降低！', theme: B.theme }, r => { B.defRes = r; if (r.correct) { B.asked++; B.correct++; addGauge(B, 'p', 15); } else B.asked++; B.mode = 'queue'; }); }),
+        act(side, moveId, mi, res));
+      return;
+    }
+    let guard = 1;
+    if (side === 'e' && mv.ult) { B.defPending = false; if (B.defRes && B.defRes.correct) { guard = 0.4; steps.push(msg('答对了！灵力护盾挡住了大部分冲击！')); } B.defRes = null; }
+    if (side === 'p' && mv.ult) B.gauge.p = 0;
+    if (side === 'p' && !mv.ult) att.moves[mi].pp--;
+    const mm = side === 'p' ? mathMult(res, mv.ult) : { m: 1, crit: 0 };
     if (side === 'p' && mm.text) steps.push(msg(mm.text));
     let weak = 1;
     if (side === 'e' && B.enemyWeak) { weak = 0.6; B.enemyWeak = false; steps.push(msg('你的数学气势压制了对手，' + an + '的攻势减弱了！')); }
@@ -139,8 +170,15 @@ function act(side, moveId, mi, res) {
       const stab = mv.t === SPECIES[att.sp].t ? 1.5 : 1;
       const crit = side === 'p' ? Math.random() < Math.max(1 / 16, mm.crit) : Math.random() < 1 / 16;
       let dmg = ((2 * att.lvl / 5 + 2) * mv.p * A / D) / 50 + 2;
-      dmg = Math.max(1, Math.floor(dmg * stab * eff * (crit ? 1.5 : 1) * mm.m * weak * rnd(0.85, 1)));
-      const an2 = mk({ eff, dmg, crit }); an2.onHit = () => { def.hp = Math.max(0, def.hp - dmg); };
+      dmg = Math.max(1, Math.floor(dmg * stab * eff * (crit ? 1.5 : 1) * mm.m * weak * guard * rnd(0.85, 1)));
+      // 连击：答对后普通招式化作多段连击（分段伤害），带 hits 的招式固定多段
+      const ftype = FXDEF[mv.fx.k].type;
+      let hits = mv.hits || 1;
+      if (!mv.hits && !mv.ult && side === 'p' && res && res.correct && (ftype === 'contact' || ftype === 'proj') && (mv.fx.sig || 0) < 2) hits = Math.min(5, 2 + (res.fast ? 1 : 0) + Math.min(2, Math.floor(G.streak / 3)));
+      hits = Math.max(1, Math.min(hits, dmg));
+      const parts = []; let left = dmg; for (let i = 0; i < hits; i++) { const pp2 = i === hits - 1 ? left : Math.max(1, Math.round(dmg / hits * rnd(0.8, 1.2))); parts.push(Math.min(left - (hits - 1 - i), pp2)); left -= parts[i]; }
+      const an2 = mk({ eff, dmg, crit, hits, parts, ko: dmg >= def.hp }); an2.dur += 0.13 * (hits - 1);
+      an2.onHit = (amt) => { def.hp = Math.max(G.noKO ? 1 : 0, def.hp - (amt === undefined ? dmg : amt)); };
       if (mv.fx.w) setTimeout(() => { if (G.battle === B) setWeather(B, mv.fx.w, tm.dur + 1.2); }, tm.cut * 1000);
       steps.push(an2, waitHp());
       if (crit) steps.push(msg('击中了要害！'));
@@ -289,7 +327,7 @@ function doThrow(id, res) {
   for (let i = 0; i < Math.min(shakes, 3); i++) Q(anim('shake', 'e', 'normal', 0.6));
   if (shakes >= 4) {
     Q(anim('click', 'e', 'normal', 0.6), fn(() => { B.victory = true; }), msg('太好了！成功收服了' + nameOf(e) + '！'), fn(() => {
-      const nm = cleanMon(e); nm.dhp = nm.hp; G.flags.dex = G.flags.dex || {}; G.flags.dex[e.sp] = 1;
+      const nm = cleanMon(e); nm.dhp = nm.hp; G.flags.dex = G.flags.dex || {}; G.flags.dex[e.sp] = 1; if (e.shiny) { G.flags.shinyDex = G.flags.shinyDex || {}; G.flags.shinyDex[e.sp] = 1; }
       if (G.party.length < 6) { G.party.push(nm); QF(msg(nameOf(e) + '加入了你的队伍！')); }
       else { G.box.push(nm); QF(msg('队伍已满，' + nameOf(e) + '被传送到了灵兽箱。')); }
     }), fn(() => endBattle('catch')));
@@ -309,6 +347,7 @@ function battleRun() {
 }
 function endBattle(result) {
   const B = G.battle; B.queue.length = 0; B.mode = 'end'; B.end = result;
+  if (G.legendObj) { if (result === 'catch') G.flags.objs[G.legendObj] = 1; else if (result === 'win') setTimeout(() => toast('传说灵兽化作光芒消失了……再次通过神社试炼还能再见到它！'), 1500); G.legendObj = null; }
   G.trans = -0.6;
   G.party.forEach(m => { m.dhp = m.hp; m._fainting = false; });
   if (G.doubleExp > 0 && (result === 'win' || result === 'catch')) G.doubleExp--;
@@ -328,6 +367,7 @@ function updateBattle(dt) {
     if (m.dhp > m.hp) m.dhp = Math.max(m.hp, m.dhp - sp); else if (m.dhp < m.hp) m.dhp = Math.min(m.hp, m.dhp + sp);
   });
   if (B.lvPanel) B.lvPanel.t += dt;
+  if (B.slow > 0) { B.slow -= dt; dt *= 0.28; }
   if (B.mode !== 'queue') return;
   if (B.hitStop > 0) { B.hitStop -= dt; return; }
   let guard = 0;
@@ -343,8 +383,16 @@ function updateBattle(dt) {
     if (c.type === 'msg') { c.chars += dt * 50; return; }
     if (c.type === 'anim') {
       const hitT = c.kind === 'move' ? c.cut + (c.dur - c.cut) * c.H : c.dur * 0.45;
-      if (c.kind === 'move' && !c.hitDone && c.t >= hitT) { c.hitDone = true; if (c.onHit) c.onHit(); const P = battlePositions(B); onMoveHit(B, c, c.side === 'p' ? { x: P.EX, y: P.EY - 150 } : { x: P.PX, y: P.PY - 190 }); }
-      if (c.t >= c.dur) { if (c.kind === 'move' && !c.hitDone) { c.hitDone = true; if (c.onHit) c.onHit(); } B.anim = null; B.cur = null; continue; } return;
+      if (c.kind === 'move' && !c.hitDone && c.t >= hitT) {
+        const n = c.hits || 1; c.sub = c.sub || 0;
+        const P = battlePositions(B), Tg = c.side === 'p' ? { x: P.EX, y: P.EY - 150 } : { x: P.PX, y: P.PY - 190 };
+        while (c.sub < n && c.t >= hitT + c.sub * 0.13) {
+          const i = c.sub++, amt = c.parts ? c.parts[i] : c.dmg;
+          if (c.onHit) c.onHit(c.parts ? amt : undefined);
+          if (i < n - 1) onSubHit(B, c, Tg, i, n, amt); else { c.hitDone = true; if (n > 1) B.combo = { n, t: 0, side: c.side, c: '#ffb020' }; onMoveHit(B, c, Tg); }
+        }
+      }
+      if (c.t >= c.dur) { if (c.kind === 'move' && !c.hitDone) { c.hitDone = true; if (c.onHit) { const rest = c.parts ? c.parts.slice(c.sub || 0).reduce((a, b) => a + b, 0) : undefined; c.onHit(rest); } } B.anim = null; B.cur = null; continue; } return;
     }
     if (c.type === 'waitHp') { if (active().dhp === active().hp && B.enemy.dhp === B.enemy.hp) { B.cur = null; continue; } return; }
     return;
@@ -359,11 +407,11 @@ function battlePositions(B) {
 function battleImgScale() { const s = uiScale(); return Math.max(CW / (1600 * s), CH / (900 * s), 1) * 1.03; }
 function trail(tr, v, dt) { if (tr === undefined || tr < v) return v; return Math.max(v, tr - Math.max(4, (tr - v) * 2.2) * dt); }
 function drawBattle() {
-  const B = G.battle, dt = LAST_DT;
+  const B = G.battle, dt = LAST_DT * (B.slow > 0 ? 0.28 : 1);
   const P = battlePositions(B);
   const stopped = B.hitStop > 0;
   B.shake = (B.shake || 0) * Math.pow(0.002, dt); B.flash = (B.flash || 0) * Math.pow(0.02, dt);
-  B.cam.kz *= Math.pow(0.03, dt); B.cam.kx *= Math.pow(0.05, dt); B.cam.ky *= Math.pow(0.05, dt);
+  B.cam.kz *= Math.pow(0.03, dt); B.cam.kx *= Math.pow(0.05, dt); B.cam.ky *= Math.pow(0.05, dt); B.cam.rot *= Math.pow(0.02, dt);
   if (B.speedLines > 0) B.speedLines -= dt;
   const shx = (Math.random() - 0.5) * B.shake, shy = (Math.random() - 0.5) * B.shake;
   // 开场镜头 + 冲击推镜
@@ -373,6 +421,10 @@ function drawBattle() {
   const A = B.anim, at = A ? clamp(A.t / A.dur, 0, 1) : 0;
   // 招牌技镜头：蓄力时推近攻击者
   if (A && A.kind === 'move' && MOVES[A.move].fx.sig && A.t > A.cut) { const u = (A.t - A.cut) / (A.dur - A.cut); const pull = Math.sin(clamp(u / A.H, 0, 1) * Math.PI) * 0.12; z *= 1 + pull; const sx0 = A.side === 'p' ? P.PX : P.EX; fx += (sx0 - fx) * pull * 1.5; }
+  let camRot = B.cam.rot;
+  if (A && A.kind === 'move' && MOVES[A.move].ult && A.t > A.cut) { const u2 = (A.t - A.cut) / (A.dur - A.cut); z *= 1.05 + 0.1 * Math.sin(Math.min(1, u2 / A.H) * Math.PI / 2); camRot += Math.sin(u2 * Math.PI) * 0.035 * (A.side === 'p' ? 1 : -1); const tx0 = A.side === 'p' ? P.EX : P.PX; fx += (tx0 - fx) * 0.25 * Math.min(1, u2 * 3); }
+  if (B.slow > 0) z *= 1 + Math.min(0.15, B.slow * 0.15);
+  z *= 1 + Math.abs(camRot) * 2.2;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const s = uiScale();
   const im = IMG[B.bg];
@@ -382,6 +434,7 @@ function drawBattle() {
   const par = Math.sin(NOW * 0.25) * 10;
   fx = clamp(fx, IL + hw + 12, IR - hw - 12); fy = clamp(fy, IT + hh + 6, IB - hh - 6);
   ctx.setTransform(s * z, 0, 0, s * z, CW / 2 - fx * z * s + shx * s, CH / 2 - fy * z * s + shy * s);
+  if (camRot) { ctx.translate(fx, fy); ctx.rotate(camRot); ctx.translate(-fx, -fy); }
   if (im) ctx.drawImage(im, IL + par - 12, IT, IR - IL + 24, IB - IT);
   else { ctx.fillStyle = '#9ad8ff'; ctx.fillRect(IL, IT, IR - IL, IB - IT); }
   // 漂浮光尘
@@ -399,7 +452,7 @@ function drawBattle() {
       Tg = A.side === 'p' ? { x: P.EX, y: P.EY - 150 } : { x: P.PX, y: P.PY - 190 };
       u = A.t <= A.cut ? 0 : (A.t - A.cut) / (A.dur - A.cut);
       const mo = motionOf(MOVES[A.move].fx.m, u, A.H, dirx, Math.abs(Tg.x - S.x));
-      o.x = mo.x; o.y = mo.y; o.rot = mo.rot; o.sx = mo.sx; o.sy = mo.sy; o.glow = mo.glow;
+      o.x = mo.x; o.y = mo.y; o.rot = mo.rot; o.sx = mo.sx; o.sy = mo.sy; o.glow = mo.glow; if (mo.alpha !== undefined) o.alpha = mo.alpha; o.blink = mo.blink || 0;
       A.ax = S.x + o.x; A.ay = S.y + o.y; A.footY = A.side === 'p' ? P.PY : P.EY;
     }
     if (A.kind === 'lunge') { const l = at < 0.15 ? -Math.sin(at / 0.15 * Math.PI / 2) * 0.3 : at < 0.45 ? Math.sin((at - 0.15) / 0.3 * Math.PI) : 0; o.x = l * 90 * dirx; o.y = -l * 30 * dirx; }
@@ -418,6 +471,7 @@ function drawBattle() {
     o.flash = Math.max(o.flash, k < 0.4 ? (Math.floor(r.t * 30) % 2 ? 0.9 : 0.25) : 0);
     o.sx *= 1 + 0.12 * (1 - k) * Math.sin(r.t * 40); o.sy *= 1 - 0.1 * (1 - k);
   });
+  if (A && A.kind === 'move' && MOVES[A.move].ult && A.t > A.cut) drawUltBackdrop(B, A, (A.t - A.cut) / (A.dur - A.cut));
   const padGlow = (x, y, rx, c) => { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(x, y); ctx.scale(1, 0.28); ctx.globalAlpha = 0.5 + 0.2 * Math.sin(NOW * 2); ctx.drawImage(softSprite(c), -rx, -rx, rx * 2, rx * 2); ctx.restore(); };
   if (B.showE) padGlow(P.EX, P.EY, 220, TYPES[SPECIES[e.sp].t].c);
   if (B.showP) padGlow(P.PX, P.PY, 280, TYPES[SPECIES[p.sp].t].c);
@@ -428,11 +482,17 @@ function drawBattle() {
     if (!isE && !B.showP && !(A && A.kind === 'faint' && A.side === 'p')) return;
     shadowEllipse(ctx, X + o.x * 0.3, Y, (isE ? 140 : 180) * o.scale, (isE ? 30 : 38) * o.scale, 0.45 * o.alpha);
     if (o.glow) glowOrb(X + o.x, Y - size * 0.4 + o.y, size * 0.7 * o.glow, TYPES[SPECIES[m.sp].t].c);
+    const charging = A && A.kind === 'move' && A.side === side && MOVES[A.move].p > 0 && A.t > A.cut && (A.t - A.cut) / (A.dur - A.cut) < A.H;
+    const rar = SPECIES[m.sp].rar, idleK = { legend: 0.75, epic: 0.5, rare: 0.2 }[rar] || 0;
+    const actK = Math.max(charging ? ((MOVES[A.move].fx.sig || 0) + 1) / 3 : 0, B.gauge && B.gauge[side] >= 100 ? 0.55 : 0);
+    if (!stopped && o.alpha > 0.3 && (B.showE || !isE)) drawAura(B, side, X + o.x, Y + o.y, size, actK >= idleK ? TYPES[SPECIES[m.sp].t].c : RARITY[rar].c, Math.max(actK, idleK));
+    if (o.blink > 0.05 && !stopped && Math.random() < 0.7) for (let i = 0; i < 3; i++) pSpawn({ x: X + o.x + rnd(-size * 0.25, size * 0.25), y: Y + o.y - rnd(0, size * 0.6), vx: rnd(-120, 120), vy: -rnd(40, 200), ay: -40, drag: 1.5, life: 0.5, s: 40, s1: 90, c: 'rgba(235,240,255,0.7)', k: PK.smoke, front: true });
     // 冲刺残影
     if (A && A.kind === 'move' && A.side === side && Math.abs(o.x) > 40) for (let i = 1; i <= 3; i++) drawCreature(ctx, m.sp, X + o.x * (1 - i * 0.22), Y + o.y * (1 - i * 0.22), size * o.scale, { back: !isE, alpha: 0.18 * (4 - i) / 3, flash: 0.6, sx: o.sx, sy: o.sy, rot: o.rot });
-    drawCreature(ctx, m.sp, X + o.x, Y + o.y, size * o.scale, { back: !isE, alpha: o.alpha, flash: o.flash, breathe: !stopped, phase: isE ? 1 : 0, sx: o.sx, sy: o.sy, rot: o.rot, flashColor: m.status === 'frz' && !o.flash ? 'rgba(160,230,255,0.45)' : undefined });
+    drawCreature(ctx, m.sp, X + o.x, Y + o.y, size * o.scale, { shiny: m.shiny, back: !isE, alpha: o.alpha, flash: o.flash, breathe: !stopped, phase: isE ? 1 : 0, sx: o.sx, sy: o.sy, rot: o.rot, flashColor: m.status === 'frz' && !o.flash ? 'rgba(160,230,255,0.45)' : undefined });
     if (m.status === 'frz' && !o.flash) drawCreature(ctx, m.sp, X + o.x, Y + o.y, size * o.scale, { back: !isE, alpha: 0.45, flash: 1, flashColor: 'rgba(170,235,255,0.6)', sx: o.sx, sy: o.sy });
     drawStatusFx(B, m, X + o.x, Y + o.y, size);
+    if (m.shiny && !stopped && Math.random() < 0.25) pSpawn({ x: X + o.x + rnd(-size * 0.35, size * 0.35), y: Y + o.y - rnd(0, size * 0.8), vx: 0, vy: -20, ay: 0, drag: 1, life: 0.6, s: rnd(16, 30), s1: 0, c: '#fff6a0', k: PK.star, front: true });
   };
   // 攻击方在前
   if (A && A.kind === 'move' && A.side === 'e') { drawMon('p'); drawMon('e'); } else { drawMon('e'); drawMon('p'); }
@@ -464,18 +524,20 @@ function drawBattle() {
   }
   drawParticles(stopped ? 0 : dt, true);
   drawRingsStars(B, dt);
-  if (A && A.kind === 'move' && A.cut > 0 && A.t <= A.cut) drawCutIn(B, A, A.t);
   // 天气 / 闪光 / 速度线 / 暗角
   drawWeather(B, dt);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (B.speedLines > 0) { ctx.save(); ctx.translate(CW / 2, CH / 2); ctx.strokeStyle = 'rgba(255,255,255,' + B.speedLines + ')'; ctx.lineWidth = 3 * s; for (let i = 0; i < 60; i++) { const a = hash(i, 4) * 6.28 + NOW, r0 = Math.max(CW, CH) * (0.3 + hash(i, 5) * 0.2); ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * r0 * 2, Math.sin(a) * r0 * 2); ctx.stroke(); } ctx.restore(); }
+  drawImpactFrame(B, dt);
   if (B.flash > 0.01) { ctx.fillStyle = 'rgba(' + (B.flashC || '255,255,255') + ',' + B.flash + ')'; ctx.fillRect(0, 0, CW, CH); }
   const vg = ctx.createRadialGradient(CW / 2, CH * 0.45, Math.min(CW, CH) * 0.4, CW / 2, CH / 2, Math.max(CW, CH) * 0.72);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(5,10,30,0.42)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, CW, CH);
   // ---- UI ----
   beginUI();
-  drawStamps(B, dt);
   const cinematic = A && A.kind === 'move' && A.cut > 0 && A.t <= A.cut;
+  if (cinematic) drawCutInV4(B, A, A.t);
+  drawStamps(B, dt);
+  drawComboCounter(B, dt);
   const uiIn = clamp((B.t - 0.9) / 0.5, 0, 1) * (cinematic ? 0 : 1), ue = 1 - Math.pow(1 - uiIn, 3);
   if (B.showE || (A && A.kind === 'faint' && A.side === 'e')) {
     const x = 50 - (1 - ue) * 640;
@@ -487,6 +549,8 @@ function drawBattle() {
     e._tr = trail(e._tr, e.dhp, dt);
     hpBar(x + 36, 128, 528, e.dhp, stats(e).hp, e._tr, 28);
     if (B.trainer) for (let i = 0; i <= B.team.length; i++) drawBallIcon(x + 40 + i * 36, 210, 13);
+    if (B.gauge) drawGaugeBar(x + 36, 166, 528, 11, B.gauge.e, B.gauge.e >= 100);
+    rarityTag(SPECIES[e.sp].rar, x + 40, 44, e.shiny);
     if (B.enemyWeak) text('气势被压制！', x + 300, 210, 24, '#7ff0e2', 'left', '900', 'middle', true);
   }
   if (B.showP || (A && A.kind === 'faint' && A.side === 'p')) {
@@ -504,6 +568,7 @@ function drawBattle() {
     rrect(x + 84, 670, 330, 10, 5, '#d5dcec'); const xg = ctx.createLinearGradient(x + 84, 0, x + 414, 0); xg.addColorStop(0, '#5ac8ff'); xg.addColorStop(1, '#3a6aff');
     rrect(x + 84, 670, Math.max(10, 330 * clamp((p.xp - cx) / (nx - cx), 0, 1)), 10, 5, xg);
     if (p.evoReady) text('✦ 可进化', x + 430, 676, 20, '#ff8a2a', 'left', '900');
+    if (B.gauge) { drawGaugeBar(x + 300, 478, 300, 24, B.gauge.p, B.gauge.p >= 100, '奥义槽'); if (B.gauge.p >= 100) text('奥义可发动！', x + 445, 455, 22, '#ffd23a', 'center', '900', 'middle', true); }
   }
   for (let i = 0; i < 6; i++) { const m = G.party[i]; ctx.globalAlpha = (m ? (m.hp > 0 ? 1 : 0.35) : 0.18) * ue; drawBallIcon(1000 + i * 44 + (1 - ue) * 700, 494, 15); }
   ctx.globalAlpha = 1;
@@ -549,13 +614,24 @@ function drawBattle() {
       text((M.fx.sig ? '★' : '') + M.n, x + 64, y + 30, 32, mv.pp > 0 ? '#fff' : 'rgba(255,255,255,0.4)', 'left', '800', 'middle', 'rgba(0,0,0,0.35)');
       text('PP ' + mv.pp + '/' + M.pp, x + 478, y + 30, 24, '#fff', 'right', '700', 'middle', 'rgba(0,0,0,0.35)');
     });
+    if (B.gauge.p >= 100 || B.moveIdx === 4) {
+      const U = MOVES[SPECIES[p.sp].ult], sel = B.moveIdx === 4, x = 1100, y = py + 14;
+      const g = ctx.createLinearGradient(x, y, x + 450, y + 128); g.addColorStop(0, sel ? '#ffe08a' : 'rgba(255,190,60,0.55)'); g.addColorStop(1, sel ? '#ff5a1a' : 'rgba(200,60,20,0.45)');
+      ctx.save(); ctx.shadowColor = '#ffb020'; ctx.shadowBlur = sel ? 34 : 14 + 8 * Math.sin(NOW * 6); rrect(x, y, 450, 128, 22, g); ctx.restore();
+      rrect(x, y, 450, 128, 22, null, sel ? '#fff' : 'rgba(255,240,200,0.6)', sel ? 3 : 1.5);
+      hanko(x + 58, y + 64, 78, '奥义');
+      text(U.n.replace('奥义·', ''), x + 112, y + 50, U.n.length > 8 ? 30 : 36, '#fff', 'left', '900', 'middle', 'rgba(0,0,0,0.5)');
+      text(sel ? '连答两题发动！　威力 ' + U.p : '按 → 或 5 选择奥义', x + 112, y + 98, 22, '#fff6d8', 'left', '800', 'middle', 'rgba(0,0,0,0.4)');
+      if (sel) { if (B.moveIdx === 4) drawHint('Z/回车 发动奥义（需连答两题）　← 返回招式', true); return; }
+    } else {
     const M = MOVES[p.moves[B.moveIdx].id];
     rrect(1100, py + 14, 450, 128, 22, 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.25)', 1.5);
     typeBadge(M.t, 1124, py + 30, 110, 42);
     const ef = M.p ? effOf(M.t, SPECIES[e.sp].t) : 1;
     if (M.p && ef !== 1) text(ef > 1 ? '效果拔群！' : '效果不佳', 1528, py + 52, 28, ef > 1 ? '#ffd23a' : '#aab8dd', 'right', '900');
     text('威力 ' + (M.p || '—') + '　命中 ' + M.acc, 1124, py + 100, 28, '#dfe8ff', 'left', '700');
-    text(M.fx.sig ? '进化招牌技！' : '答对威力大增', 1124, py + 130, 20, M.fx.sig ? '#ffcf5a' : '#7ff0e2', 'left', '700');
+    text(M.fx.sig ? '进化招牌技！' : (M.hits ? M.hits + ' 段连击！' : '答对威力大增·可触发连击'), 1124, py + 130, 20, M.fx.sig ? '#ffcf5a' : '#7ff0e2', 'left', '700');
+    }
   }
   if (B.mode === 'party' && G.partyUI) drawPartyUI();
   if (B.mode === 'bag' && G.bagUI) drawBagUI();

@@ -215,6 +215,20 @@ function drawObj(o, TS) {
     if (!objDone(o)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.4 + 0.3 * Math.sin(NOW * 2.5 + o.y); ctx.drawImage(glowSprite('#b9a4ff'), cx - TS * 0.6, by - h * 0.9, TS * 1.2, TS * 1.2); ctx.restore(); }
     return;
   }
+  if (o.type === 'shrine') {
+    // 朱红鸟居 + 漂浮的传说灵兽剪影
+    const w = TS * 1.6, h = TS * 1.5, col = '#d8302a';
+    shadowEllipse(ctx, cx, by, TS * 0.8, TS * 0.16, 0.4);
+    ctx.save(); ctx.fillStyle = col; ctx.fillRect(cx - w * 0.36, by - h, TS * 0.14, h); ctx.fillRect(cx + w * 0.36 - TS * 0.14, by - h, TS * 0.14, h);
+    ctx.fillStyle = '#1a1010'; ctx.beginPath(); ctx.moveTo(cx - w * 0.6, by - h - TS * 0.1); ctx.quadraticCurveTo(cx, by - h + TS * 0.05, cx + w * 0.6, by - h - TS * 0.1); ctx.lineTo(cx + w * 0.55, by - h + TS * 0.06); ctx.quadraticCurveTo(cx, by - h + TS * 0.2, cx - w * 0.55, by - h + TS * 0.06); ctx.fill();
+    ctx.fillStyle = col; ctx.fillRect(cx - w * 0.5, by - h + TS * 0.12, w, TS * 0.12); ctx.fillRect(cx - w * 0.45, by - h * 0.72, w * 0.9, TS * 0.1); ctx.restore();
+    if (!objDone(o)) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.55 + 0.3 * Math.sin(NOW * 2); ctx.drawImage(glowSprite('#ffd23a'), cx - TS * 1.2, by - TS * 2.2, TS * 2.4, TS * 2.4); ctx.restore();
+      drawCreature(ctx, o.sp, cx, by - TS * 0.35 + Math.sin(NOW * 1.5) * TS * 0.08, TS * 1.1, { silhouette: 'rgba(255,220,120,0.55)', t: NOW });
+      bubble(cx, by - TS * 2.1, TS, '传', '#e0a000');
+    }
+    return;
+  }
   if (o.type === 'trophy') { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.7; ctx.drawImage(glowSprite('#ffe58a'), cx - TS * 1.2, by - TS * 1.8, TS * 2.4, TS * 2.4); ctx.restore(); shadowEllipse(ctx, cx, by, TS * 0.3, TS * 0.1, 0.4); img('trophy', TS * 0.75); return; }
   const key = o.img || 'npc_old';
   drawPersonSprite(key, cx, by, TS, 'down', 0, false, o);
@@ -349,7 +363,7 @@ function drawMinimap(x, y, w, h) {
   ctx.drawImage(MINI, sx, sy, vw, vh, x, y, w, h); ctx.drawImage(fogCanvas(), sx, sy, vw, vh, x, y, w, h);
   ctx.imageSmoothingEnabled = true;
   const P = (tx, ty) => [x + (tx + 0.5 - sx) * k, y + (ty + 0.5 - sy) * k];
-  OBJS.forEach(o => { if (!G.explored[o.y * W + o.x] || objDone(o)) return; const c = { chest: '#9affb8', gold: '#ffd23a', stele: '#b9a4ff', trainer: '#ff6a6a', master: '#c08aff' }[o.type]; if (!c) return; const [a, b] = P(o.x, o.y); if (a < x || b < y || a > x + w || b > y + h) return; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(a, b, 3.5, 0, 6.28); ctx.fill(); });
+  OBJS.forEach(o => { if (!G.explored[o.y * W + o.x] || objDone(o)) return; const c = { chest: '#9affb8', gold: '#ffd23a', stele: '#b9a4ff', trainer: '#ff6a6a', master: '#c08aff', shrine: '#ff9a2a' }[o.type]; if (!c) return; const [a, b] = P(o.x, o.y); if (a < x || b < y || a > x + w || b > y + h) return; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(a, b, 3.5, 0, 6.28); ctx.fill(); });
   const [px, py] = P(fx, fy); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#e8343a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px, py, 6 + Math.sin(NOW * 5), 0, 6.28); ctx.fill(); ctx.stroke();
   ctx.restore();
   text(curRegion().n, x + w / 2, y + h + 26, 22, '#fff', 'center', '800', 'middle', true);
@@ -367,7 +381,7 @@ function drawMapScreen() {
   REGIONS.forEach(R => { const seen = (() => { for (let dy = -6; dy <= 6; dy += 3) for (let dx = -6; dx <= 6; dx += 3) { const xx = R.seed[0] + dx, yy = R.seed[1] + dy; if (inMap(xx, yy) && G.explored[yy * W + xx]) return true; } return false; })(); const [a, b] = P(R.seed[0], R.seed[1]); text(seen ? R.n : '？？？', a, b - 28, 26, seen ? '#fff' : 'rgba(255,255,255,0.5)', 'center', '900', 'middle', true); if (seen) text('Lv.' + R.lv[0] + '~' + R.lv[1], a, b + 2, 18, '#dfe8ff', 'center', '700', 'middle', true); });
   TOWNS.forEach(t => { if (!G.explored[t.y * W + t.x]) return; const [a, b] = P(t.x, t.y); rrect(a - 9, b - 9, 18, 18, 4, '#ff6a4a', '#fff', 2); text(t.n, a, b + 22, 18, '#ffe9c0', 'center', '800', 'middle', true); });
   GATES.forEach(g => { const [gx, gy] = g.tiles[0]; if (!G.explored[gy * W + gx]) return; const [a, b] = P(gx, gy); const open = G.flags.gates[g.id]; ctx.fillStyle = open ? '#7dfc9e' : '#ffd23a'; ctx.beginPath(); ctx.arc(a, b, 8, 0, 6.28); ctx.fill(); text(open ? '✓' : '?', a, b + 1, 14, '#1b2440', 'center', '900'); });
-  OBJS.forEach(o => { if (!G.explored[o.y * W + o.x] || objDone(o)) return; const c = { chest: '#9affb8', gold: '#ffd23a', stele: '#b9a4ff', trainer: '#ff6a6a', master: '#c08aff', trophy: '#fff' }[o.type]; if (!c) return; const [a, b] = P(o.x, o.y); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(a, b, 4, 0, 6.28); ctx.fill(); });
+  OBJS.forEach(o => { if (!G.explored[o.y * W + o.x] || objDone(o)) return; const c = { chest: '#9affb8', gold: '#ffd23a', stele: '#b9a4ff', trainer: '#ff6a6a', master: '#c08aff', trophy: '#fff', shrine: '#ff9a2a' }[o.type]; if (!c) return; const [a, b] = P(o.x, o.y); ctx.fillStyle = c; ctx.beginPath(); ctx.arc(a, b, 4, 0, 6.28); ctx.fill(); });
   const [fx, fy] = playerPos(); const [px, py] = P(fx, fy); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#e8343a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(px, py, 9 + Math.sin(NOW * 5) * 2, 0, 6.28); ctx.fill(); ctx.stroke();
   const leg = [['#ff6a4a', '城镇'], ['#ffd23a', '数学之门 / 断桥 / 金宝箱'], ['#7dfc9e', '已解锁'], ['#9affb8', '宝箱'], ['#b9a4ff', '谜题石碑'], ['#ff6a6a', '训练师'], ['#c08aff', '算术大师']];
   leg.forEach(([c, n], i) => { const lx = 120 + i * 200; ctx.fillStyle = c; ctx.beginPath(); ctx.arc(lx, 862, 9, 0, 6.28); ctx.fill(); text(n, lx + 16, 862, 20, '#dfe8ff', 'left', '700'); });
