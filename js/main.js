@@ -82,6 +82,7 @@ function onPress(k) {
     case 'battle': if (G.choice) return choiceInput(k); return battleInput(k);
   }
   if (G.wheel) return wheelInput(k);
+  if (G.pickUI) return pickInput(k);
   if (G.choice) return choiceInput(k);
   if (G.dialog) return dialogInput(k);
   if (G.shopUI) return shopInput(k);
@@ -178,6 +179,7 @@ function interactObj(o) {
       else say('好难的题！宝箱还在这里，随时可以再来挑战。');
     })); return;
   }
+  if (o.type === 'movetutor') { interactMoveTutor(o); return; }
   if (o.type === 'shrine') {
     const S = SPECIES[o.sp];
     if (done) { say(o.name + '静悄悄的，传说中的' + S.n + '已经离开了这里。'); return; }
@@ -252,13 +254,13 @@ function updateWorld(dt) {
   if (G.pendingEnc) { G.pendingEnc.t -= dt; if (G.pendingEnc.t <= 0) { const m = G.pendingEnc.mon; G.pendingEnc = null; startBattle(m); } return; }
   if (G.dialog) { G.dialog.chars += dt * 45; }
   if (G.wheel) updateWheel(dt);
-  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.gradeUI || G.quiz || G.wheel) { if (!p.moving) return; }
+  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.pickUI || G.gradeUI || G.quiz || G.wheel) { if (!p.moving) return; }
   if (p.moving) {
     p.prog += dt / (p.run ? 0.12 : 0.2);
     if (p.prog >= 1) { p.moving = false; p.prog = 0; onStep(); }
     else return;
   }
-  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.gradeUI || G.quiz || G.wheel || G.pendingEnc) return;
+  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.pickUI || G.gradeUI || G.quiz || G.wheel || G.pendingEnc) return;
   if (G.queued) { const k = G.queued; G.queued = null; onPress(k); return; }
   const k = G.held[G.held.length - 1];
   if (!k) return;
@@ -287,7 +289,7 @@ function update(dt) {
     if (G.trans === 0 && G.battle && G.battle.mode === 'end') { G.battle = null; G.scene = 'world'; G.partyUI = null; G.bagUI = null; G.held = []; G.fadeIn = 1; pClear(); afterBattleChecks(); }
     return;
   }
-  if (G.scene === 'world') updateWorld(dt);
+  if (G.scene === 'world') { processPendingLearn(); updateWorld(dt); }
   else if (G.scene === 'battle' && G.trans <= 0.45 && !G.quiz) updateBattle(dt);
   else if (G.scene === 'evolve') updateEvo(dt);
 }
@@ -316,6 +318,7 @@ function draw() {
   if (G.quiz) drawQuiz();
   if (G.tutor) drawTutor();
   if (G.choice) drawChoice();
+  if (G.pickUI && G.scene !== 'battle') drawPickUI();
   if (G.wheel) drawWheel();
   if (G.dialog && G.scene !== 'world') drawDialogBox();
   drawTransition();
@@ -353,5 +356,6 @@ window.__game = {
   gauge: (p, e) => { if (G.battle) { G.battle.gauge.p = p; G.battle.gauge.e = e; } },
   battleState: () => G.battle && { mode: G.battle.mode, cur: G.battle.cur && G.battle.cur.type, anim: G.battle.anim && G.battle.anim.move, quiz: !!G.quiz },
   dex: (idx) => { G.dexUI = { idx: idx || 0 }; },
+  pick: () => G.pickUI && { title: G.pickUI.title, n: G.pickUI.items.length, idx: G.pickUI.idx },
   ridAt, scene: () => G.scene
 };

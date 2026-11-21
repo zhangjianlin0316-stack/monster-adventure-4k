@@ -44,6 +44,7 @@ function battleInput(k) {
     }
     return;
   }
+  if (G.pickUI) return pickInput(k);
   if (B.mode === 'party') return partyInput(k);
   if (B.mode === 'bag') return bagInput(k);
   const grid = (idx, k, n) => {
@@ -276,9 +277,9 @@ function gainXP(m, amt, main) {
 function learnMove(m, id, silent) {
   if (m.moves.some(x => x.id === id)) return [];
   if (m.moves.length < 4) { m.moves.push({ id, pp: MOVES[id].pp }); return silent ? [] : [msg(nameOf(m) + '学会了' + MOVES[id].n + '！')]; }
-  let wi = 0; m.moves.forEach((x, i) => { if (MOVES[x.id].p < MOVES[m.moves[wi].id].p) wi = i; });
-  const old = MOVES[m.moves[wi].id].n; m.moves[wi] = { id, pp: MOVES[id].pp };
-  return silent ? [] : [msg(nameOf(m) + '忘记了' + old + '，学会了' + MOVES[id].n + '！')];
+  if (silent) { queueLearn(m, id); return []; }
+  // 战斗中：暂停队列，让玩家选择遗忘哪个招式
+  return [msg(nameOf(m) + '想要学习新招式「' + MOVES[id].n + '」！'), fn(() => { const B = G.battle; B.mode = 'learn'; openLearnUI(m, id, txt => { B.mode = 'queue'; QF(msg(txt)); }); })];
 }
 function battleSwitch(idx, forced) {
   const B = G.battle;
@@ -633,6 +634,7 @@ function drawBattle() {
     text(M.fx.sig ? '进化招牌技！' : (M.hits ? M.hits + ' 段连击！' : '答对威力大增·可触发连击'), 1124, py + 130, 20, M.fx.sig ? '#ffcf5a' : '#7ff0e2', 'left', '700');
     }
   }
+  if (G.pickUI) drawPickUI();
   if (B.mode === 'party' && G.partyUI) drawPartyUI();
   if (B.mode === 'bag' && G.bagUI) drawBagUI();
   if (B.mode === 'menu' || B.mode === 'moves') drawHint('方向键 选择　Z/回车 确认　X/Esc 返回', true);

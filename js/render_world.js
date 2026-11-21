@@ -234,6 +234,7 @@ function drawObj(o, TS) {
   drawPersonSprite(key, cx, by, TS, 'down', 0, false, o);
   if (o.type === 'trainer' && !objDone(o)) bubble(cx, by - TS * 1.55, TS, '!', '#e8343a');
   if (o.type === 'master' && !G.flags.badges[o.region]) bubble(cx, by - TS * 1.6, TS, '算', '#8a4aff');
+  if (o.type === 'movetutor') bubble(cx, by - TS * 1.55, TS, '技', '#ff6a2a');
   if (o.type === 'merchant') bubble(cx, by - TS * 1.55, TS, '★', '#e0a000');
   if (o.id === 'prof' && !G.flags.profTalk) bubble(cx, by - TS * 1.55, TS, '?', '#2a7aff');
 }

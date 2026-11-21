@@ -300,6 +300,8 @@ function placeObjects(rng) {
     add({ type: 'npc', id: 'n_' + t.id, x: t.x + 3, y: t.y + 3 - 0, img: npcImg, region: r, lines: NPC_LINES[t.id] });
     if (t.id === 'lvzhou' || t.id === 'xuefeng') add({ type: 'merchant', id: 'merchant_' + t.id, x: t.x - 2, y: t.y - 1 + 3 + 0, img: 'npc_merchant', region: r });
   });
+  // 招式导师（每个城镇一位）
+  TOWNS.forEach(t => add({ type: 'movetutor', id: 'tutor_' + t.id, x: t.x + 5, y: t.y + 1, region: t.r, img: 'npc_sage', name: '招式导师·' + t.n.slice(0, 2) }));
   // 教授在起始镇
   const st = TOWNS[0]; add({ type: 'npc', id: 'prof', x: st.x + 2, y: st.y + 4 + 1, img: 'npc_prof', region: 'meadow', lines: NPC_LINES.prof });
   // 每个地区：宝箱、石碑、训练师

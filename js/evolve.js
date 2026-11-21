@@ -27,7 +27,7 @@ function evolveSwap(E) {
   m.sp = E.to; m.evoReady = false;
   const nw = stats(m); m.hp = Math.max(1, Math.round(nw.hp * ratio)); m.dhp = m.hp;
   E.old = old; E.nw = nw; E.learned = [];
-  SPECIES[m.sp].learn.filter(e => e[0] <= m.lvl).forEach(e => { if (!m.moves.some(x => x.id === e[1])) { const L = learnMove(m, e[1], true); E.learned.push(e[1]); } });
+  const prevL = new Set(SPECIES[E.from].learn.map(e => e[1])); SPECIES[m.sp].learn.filter(e => e[0] <= m.lvl && !prevL.has(e[1])).forEach(e => { if (!m.moves.some(x => x.id === e[1])) { learnMove(m, e[1], true); E.learned.push(e[1]); } });
   G.flags.dex = G.flags.dex || {}; G.flags.dex[m.sp] = 1;
   // 进化后如果已经满足下一次进化的等级，也会进入准备状态
   const sp = SPECIES[m.sp]; if (sp.evoTo && m.lvl >= sp.evoLvl) m.evoReady = true;
