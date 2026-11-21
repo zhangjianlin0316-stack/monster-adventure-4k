@@ -135,7 +135,8 @@ function musicFor() {
   if (G.scene === 'loading') return null;
   if (G.scene === 'title' || G.scene === 'starter' || G.scene === 'grade') return 'title';
   if (G.scene === 'evolve') return 'evolve';
-  if (G.scene === 'battle' && G.battle) return G.battle.victory ? 'victory' : (G.trans > 0.9 ? null : G.battle.trainer ? 'trainer' : 'battle');
+  if (G.tutor) return 'tutor';
+  if (G.scene === 'battle' && G.battle) { const B = G.battle, r = SPECIES[B.enemy.sp].rar; return B.victory ? 'victory' : (G.trans > 0.9 ? null : B.trainer ? 'trainer' : (B.legend || r === 'legend') ? 'legend' : (r === 'epic' || r === 'rare' || B.enemy.shiny) ? 'battle_rare' : 'battle'); }
   if (G.quiz && G.quiz.opts.count > 1) return 'quiz';
   return worldSong();
 }
@@ -280,6 +281,7 @@ function update(dt) {
   if (G.volShow > 0) G.volShow -= dt;
   if (G.fadeIn > 0) G.fadeIn = Math.max(0, G.fadeIn - dt * 1.6);
   if (AudioSys.started) { const mu = musicFor(); if (mu && AudioSys.current !== mu) AudioSys.play(mu); }
+  if (AudioSys.started) { const B = G.battle; let hi = 0; if (G.scene === 'battle' && B && !B.victory) { const p = G.party[B.pi]; hi = (p && p.hp > 0 && p.hp < stats(p).hp * 0.3) || (B.gauge && B.gauge.p >= 100) || (B.anim && B.anim.kind === 'move' && MOVES[B.anim.move].ult) ? 1 : 0; } else if (G.scene === 'evolve') hi = 1; AudioSys.setIntensity(hi); }
   if (G.toast) { G.toast.t -= dt; if (G.toast.t <= 0) G.toast = null; }
   if (G.tutor) { updateTutor(dt); return; }
   updateQuiz(dt);

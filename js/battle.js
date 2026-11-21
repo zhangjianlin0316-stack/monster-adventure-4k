@@ -356,7 +356,7 @@ function endBattle(result) {
 }
 function animSfx(a) {
   const m = { status: 'statdown', faint: 'faint', throw: 'throw', shake: 'shake', click: 'catch', levelup: 'levelup', heal: 'heal', send: 'sendout', recall: 'run', release: 'sendout', absorb: 'swoosh' }[a.kind];
-  if (a.kind === 'move') { const fx = MOVES[a.move].fx; if (fx.sig) AudioSys.sfx('charge'); setTimeout(() => AudioSys.sfx(FXDEF[fx.k].type === 'beam' ? 'beam' : 'swoosh'), a.cut * 1000 + 120); }
+  if (a.kind === 'move') { const fx = MOVES[a.move].fx; AudioSys.sfx(MOVES[a.move].ult ? 'ult' : fx.sig ? 'sigcut' : a.cut > 0 ? 'cutin' : 'blip'); if (fx.sig && !MOVES[a.move].ult) AudioSys.sfx('charge'); setTimeout(() => AudioSys.sfx(FXDEF[fx.k].type === 'beam' ? 'beam' : 'swoosh'), a.cut * 1000 + 120); }
   else if (m) AudioSys.sfx(m);
 }
 function updateBattle(dt) {

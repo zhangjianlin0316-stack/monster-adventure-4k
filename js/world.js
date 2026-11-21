@@ -5,7 +5,7 @@ const T = { GROUND: 0, TALL: 1, TREE: 2, WATER: 3, PATH: 4, FLOWER: 5, FENCE: 6,
 const REGIONS = [
   { id: 'meadow', n: '翠风原野', seed: [75, 93], wgt: 1.0, lv: [2, 6], theme: 'calc', bg: 'bg_meadow', song: 'route', dens: 0.64, grass: 0.59,
     pool: [['bunny', 28], ['bird', 28], ['shroom', 16], ['volt', 10], ['moth', 14], ['otter', 8], ['fawn', 4], ['fox', 3], ['turtle', 3], ['cat', 1]] },
-  { id: 'flower', n: '花海草原', seed: [80, 57], wgt: 1.0, lv: [5, 10], theme: 'measure', bg: 'bg_flower', song: 'route', dens: 0.7, grass: 0.58,
+  { id: 'flower', n: '花海草原', seed: [80, 57], wgt: 1.0, lv: [5, 10], theme: 'measure', bg: 'bg_flower', song: 'flower', dens: 0.7, grass: 0.58,
     pool: [['bunny', 20], ['bird', 18], ['fawn', 12], ['shroom', 12], ['volt', 10], ['moth', 14], ['tanuki', 6], ['jelly', 5], ['crane', 2], ['bunny2', 3], ['bird2', 3]] },
   { id: 'lake', n: '镜湖湖畔', seed: [27, 84], wgt: 1.0, lv: [7, 12], theme: 'frac', bg: 'bg_lake', song: 'lake', dens: 0.66, grass: 0.58,
     pool: [['turtle', 14], ['jelly', 22], ['seal', 12], ['otter', 18], ['koi', 10], ['volt', 8], ['bird', 10], ['crane', 2], ['dragon', 1], ['jelly2', 4]] },
