@@ -324,6 +324,6 @@ window.__game = {
   setTime: t => { if (G.evo) { G.evo.t = t - 0.001; } },
   openGate: id => { const g = GATES.find(g => g.id === id); if (g) openGate(g); },
   freezeAt: (side, frac, cut) => { G.freeze = { side, frac, cut }; G.timeScale = 1; },
-  resume: () => { G.timeScale = 3; },
+  resume: () => { G.freeze = null; G.timeScale = 3; },
   ridAt, scene: () => G.scene
 };
