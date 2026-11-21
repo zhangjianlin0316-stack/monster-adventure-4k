@@ -4,7 +4,7 @@
 - [x] M3 技能扩充 + 学招选择界面 + 技能导师
 - [x] M4 阴阳师风音乐重写
 - [x] M5 新灵兽 + 稀有度 + 异色 + 图鉴
-- [ ] M6 测试、截图、README、zip
+- [x] M6 测试、截图、README、zip（e2e 4K file:// 全通过、无控制台错误；mathq 146646 / explain 132126 / world 通过；README v4）
 
 ## 笔记
 - 新灵兽原图：/workspace/mg_assets_src/v4/*.jpg，抠图脚本 /workspace/process4.py（rembg），输出到 assets/*.webp（已完成 27 张 + teacher）

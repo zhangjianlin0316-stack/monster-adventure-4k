@@ -1,7 +1,7 @@
 // 端到端测试：3840×2160，file:// 加载
 const { chromium } = require('playwright-core');
 const path = require('path');
-const OUT = process.env.OUT || '/workspace/monster-game/screenshots_v3';
+const OUT = process.env.OUT || '/workspace/monster-game/screenshots_v4/e2e';
 (async () => {
   const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
   const page = await browser.newPage({ viewport: { width: 3840, height: 2160 } });
