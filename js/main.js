@@ -349,7 +349,9 @@ function draw() {
   drawToast();
 }
 function loop(ts) {
-  const dt = Math.min(0.05, Math.max(0, (ts - lastTS) / 1000)) * (G.timeScale ?? 1); lastTS = ts; NOW += dt; LAST_DT = dt;
+  let dt = Math.min(0.05, Math.max(0, (ts - lastTS) / 1000)) * (G.timeScale ?? 1); lastTS = ts;
+  if (G.manualStep !== undefined) { if (G.manualStep > 0) { dt = 1 / 30; G.manualStep--; G.stepDone = (G.stepDone || 0) + 1; } else dt = 0; } // 录制视频用：逐帧推进
+  NOW += dt; LAST_DT = dt || 1e-6;
   try { update(dt); draw(); } catch (err) { console.error(err); }
   requestAnimationFrame(loop);
 }

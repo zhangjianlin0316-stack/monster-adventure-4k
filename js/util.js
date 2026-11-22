@@ -39,12 +39,14 @@ MON_KEYS.forEach(k => MON_KEYS2[k] = 3);
 for (const k in MON_KEYS2) for (let s = 0; s < MON_KEYS2[k]; s++) ASSET_LIST[s ? k + (s + 1) : k] = 'assets/' + (s ? k + (s + 1) : k) + '.webp';
 const IMG = {}; let assetsDone = 0; const assetsFailed = [];
 const ASSET_TOTAL = Object.keys(ASSET_LIST).length;
-for (const k in ASSET_LIST) {
+// 图片下载失败（例如 GitHub Pages 偶发 503）时自动重试 3 次
+function loadAsset(k, tries) {
   const im = new Image();
   im.onload = () => { IMG[k] = im; assetsDone++; };
-  im.onerror = () => { assetsFailed.push(k); assetsDone++; };
-  im.src = ASSET_LIST[k];
+  im.onerror = () => { if (tries < 3) setTimeout(() => loadAsset(k, tries + 1), 600 * (tries + 1)); else { assetsFailed.push(k); assetsDone++; } };
+  im.src = ASSET_LIST[k] + (tries ? '?r=' + tries : '');
 }
+for (const k in ASSET_LIST) loadAsset(k, 0);
 const assetsReady = () => assetsDone >= ASSET_TOTAL;
 // 高质量缩放缓存（逐级减半，避免大图直接缩小产生锯齿）
 const SCALE_CACHE = new Map();
