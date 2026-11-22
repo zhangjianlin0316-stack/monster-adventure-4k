@@ -13,15 +13,21 @@ const TUTOR_OUTRO = ['你看，是不是一下子就清楚了？下次一定能�
 // 星老师语音：预生成的神经语音片段拼读（intro/outro 为整句），与动画步骤同步；自动前进会等这一句说完
 function tutorVoice(s) {
   const T = G.tutor; if (!T) return; const stepAt = T.s; T.vdur = null; T.vwait = true;
-  if (!Voice.enabled || AudioSys.muted) { T.vwait = false; AudioSys.sfx('talk'); return; }
-  VoicePack.load('tutor').then(() => {
+  if (!Voice.enabled) { T.vwait = false; AudioSys.sfx('talk'); return; }
+  AudioSys.unlock();
+  const pr = VoicePack.progress('tutor'); T.vload = !pr.done; // 语音包还没下载完：显示进度并等待（不再悄悄跳过）
+  VoicePack.load('tutor').then(async () => {
+    T.vload = false;
     if (G.tutor !== T || T.s !== stepAt) return;
     let items = Voice.tutorItems(s);
     if (items) {
       if (stepAt === 0 && !T.introDone) { T.introDone = true; const L = TUTOR_INTRO[rint(0, TUTOR_INTRO.length - 1)]; if (VoicePack.has('tutor', L)) items = [{ pack: 'tutor', k: L }, { gap: 0.35 }].concat(items); }
       if (stepAt === T.X.steps.length - 1) { const L = TUTOR_OUTRO[rint(0, TUTOR_OUTRO.length - 1)]; if (VoicePack.has('tutor', L)) items = items.concat([{ gap: 0.45 }, { pack: 'tutor', k: L }]); }
       const t0 = T.t;
-      Voice.playSeq(items, { tag: 'tutor' }).then(d => { if (G.tutor === T && T.s === stepAt) { T.vwait = false; T.vdur = d ? t0 + d : null; } });
+      const d = await Voice.playSeq(items, { tag: 'tutor' });
+      if (G.tutor !== T || T.s !== stepAt) return;
+      if (d === null && Voice.enabled) { Voice.stats.fallback++; const fd = Voice.fallbackSpeak(s); T.vwait = false; T.vdur = fd ? T.t + fd : null; return; }
+      T.vwait = false; T.vdur = d ? t0 + d : null;
     } else { Voice.tutor(s).then(d => { if (G.tutor === T && T.s === stepAt) { T.vwait = false; T.vdur = d ? T.t + d : null; } }); }
   });
 }
@@ -49,7 +55,7 @@ function tutorPointer(ux, uy) {
 function updateTutor(dt) {
   const T = G.tutor; if (!T) return;
   T.t += dt; T.T += dt;
-  if (T.vwait && T.t > 6) T.vwait = false; // 语音加载过慢时不卡住
+  if (T.vwait && T.t > (T.vload ? 20 : 8)) T.vwait = false; // 语音加载过慢时不卡住（下载中最多等 20 秒）
   if (T.auto && T.t > tutorStepTime(T) && T.s < T.X.steps.length - 1) { T.s++; T.t = 0; tutorVoice(T.X.steps[T.s]); AudioSys.sfx('chalk'); }
 }
 // ---------- 绘制工具 ----------
@@ -396,8 +402,10 @@ function drawTutor() {
   const last = T.s >= X.steps.length - 1;
   text(last ? 'Z 明白了！　R 重播　N 语音' : 'Z 下一步　← 上一步　R 重播　N 语音　X 跳过', bx + bw - 30, by + 88, 20, '#8a6a2a', 'right', '700');
   // 语音开关按钮 + 说话波形
-  { const sx = 1330, sy = 800, on = Voice.enabled && !AudioSys.muted; ctx.save(); cdot(sx, sy, 20, on ? '#ffcf5a' : '#ccc'); text(on ? '🔊' : '🔇', sx, sy + 1, 20, '#333', 'center', '700');
+  { const sx = 1330, sy = 800, on = Voice.enabled; ctx.save(); cdot(sx, sy, 20, on ? '#ffcf5a' : '#ccc'); text(on ? '🔊' : '🔇', sx, sy + 1, 20, '#333', 'center', '700');
     if (Voice.curTag === 'tutor') for (let i = 0; i < 5; i++) { const h = 6 + Math.abs(Math.sin(T.T * 9 + i * 1.3)) * 18; rrect(sx + 30 + i * 14, sy - h / 2, 8, h, 4, '#ffb84a'); }
+    else if (!on) text('语音已关闭 · 按 N 开启', sx - 34, sy + 1, 20, '#c0392b', 'right', '800');
+    else if (T.vload) { const p = VoicePack.progress('tutor'); text('语音下载中 ' + p.pct + '%', sx - 34, sy + 1, 20, '#b7791f', 'right', '800'); }
     ctx.restore(); }
   // 自动前进进度条
   if (!last) { rrect(bx + 36, by + bh - 14, bw - 72, 6, 3, 'rgba(0,0,0,0.08)'); rrect(bx + 36, by + bh - 14, (bw - 72) * clamp(T.t / Math.min(30, tutorStepTime(T)), 0, 1), 6, 3, '#ffcf5a'); }

@@ -31,7 +31,13 @@ const AudioSys = (() => {
     for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay) * (i < 200 ? i / 200 : 1); }
     return b;
   }
-  function unlock() { if (!init()) return; if (ac.state === 'suspended') ac.resume(); }
+  let unlocked = false;
+  function unlock() { // 必须在用户点击/按键里调用：恢复 AudioContext，并播一个无声片段解锁 Safari/iPad
+    if (!init()) return; if (ac.state !== 'running') { try { ac.resume(); } catch (e) { } }
+    if (!unlocked) { try { const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start(0); unlocked = true; } catch (e) { } }
+  }
+  ['pointerdown', 'touchstart', 'touchend', 'keydown', 'click'].forEach(ev => window.addEventListener(ev, () => unlock(), { capture: true, passive: true }));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && ac && ac.state !== 'running' && unlocked) { try { ac.resume(); } catch (e) { } } });
   // ---------- 乐器 ----------
   function env(g, t, a, d, s, r, dur, peak) {
     g.gain.setValueAtTime(0.0001, t);

@@ -93,7 +93,7 @@ function dialogInput(k) {
   if (D.i >= D.lines.length) { G.dialog = null; if (D.after) D.after(); }
 }
 // ---------- 主菜单 ----------
-const MENU_OPTS = ['队伍', '背包', '祈愿', '灵兽图鉴', '世界地图', '错题本与统计', '年级与竞赛', '保存', '读取', '关闭'];
+const MENU_OPTS = ['队伍', '背包', '祈愿', '灵兽图鉴', '世界地图', '错题本与统计', '年级与竞赛', '声音与语音', '保存', '读取', '关闭'];
 function drawMenu() {
   beginUI();
   const n = MENU_OPTS.length, h = 60 + n * 64, sl = clamp((NOW - (G.menu.t0 || 0)) * 6, 0, 1), ox = (1 - sl) * 80;
@@ -119,6 +119,7 @@ function menuInput(k) {
   if (o === '年级与竞赛') { G.menu = null; G.gradeUI = { grade: G.grade, comp: G.comp, row: 0, setup: false }; }
   if (o === '保存') { saveGame(); G.menu = null; say('游戏进度已保存！（星星、错题本、地图探索都会保存）'); AudioSys.sfx('save'); }
   if (o === '读取') { if (loadGame()) { G.menu = null; toast('读取成功！'); } else toast('没有找到存档'); }
+  if (o === '声音与语音') { G.menu = null; openSoundUI(); return; }
   if (o === '关闭') G.menu = null;
 }
 // ---------- 队伍 ----------
@@ -394,7 +395,7 @@ function getLogo(us) {
   g.font = '800 46px ' + FONT; g.lineWidth = 12; g.strokeStyle = '#13265e'; g.strokeText('—  翠风之旅 · 数学大冒险  —', 0, 118); g.fillStyle = '#ffffff'; g.fillText('—  翠风之旅 · 数学大冒险  —', 0, 118);
   LOGO_C = c; return c;
 }
-function titleOptions() { const o = []; if (hasSave()) o.push({ n: '继续冒险', f: () => { loadGame(); } }); o.push({ n: '新的冒险', f: () => newGame() }); return o; }
+function titleOptions() { const o = []; if (hasSave()) o.push({ n: '继续冒险', f: () => { loadGame(); } }); o.push({ n: '新的冒险', f: () => newGame() }); o.push({ n: '声音与语音（测试）', f: () => openSoundUI() }); return o; }
 function drawTitle() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const im = IMG.title_bg;

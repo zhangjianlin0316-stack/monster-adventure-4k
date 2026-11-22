@@ -66,13 +66,15 @@ cv.addEventListener('mousemove', ev => { if (G.quiz) { const [x, y] = toUI(ev); 
 cv.addEventListener('mousedown', ev => {
   AudioSys.unlock();
   const b = topButtons(), px = ev.clientX * DPR, py = ev.clientY * DPR;
-  if (Math.hypot(px - b.snd.x, py - b.snd.y) < b.snd.r) { AudioSys.setMuted(!AudioSys.muted); G.volShow = 1.6; return; }
+  if (Math.hypot(px - b.snd.x, py - b.snd.y) < b.snd.r) { if (G.soundUI) G.soundUI = null; else openSoundUI(); return; }
+  if (G.soundUI) { const [x, y] = toUI(ev); soundPointer(x, y); return; }
   if (Math.hypot(px - b.fs.x, py - b.fs.y) < b.fs.r) { toggleFS(); return; }
   if (G.tutor) { const [x, y] = toUI(ev); tutorPointer(x, y); return; }
   if (G.quiz) { const [x, y] = toUI(ev); quizPointer(x, y, true); return; }
   if (G.dialog || (G.scene === 'battle' && G.battle && G.battle.mode === 'queue') || G.scene === 'evolve' || G.wheel || G.scene === 'title') onPress('ok');
 });
 function onPress(k) {
+  if (G.soundUI) return soundInput(k);
   if (G.tutor) return tutorInput(k);
   if (G.quiz) return quizInput(k);
   if (G.trans > 0.3 && G.scene === 'battle') return;
@@ -269,13 +271,13 @@ function updateWorld(dt) {
   if (G.pendingEnc) { G.pendingEnc.t -= dt; if (G.pendingEnc.t <= 0) { const m = G.pendingEnc.mon; G.pendingEnc = null; startBattle(m); } return; }
   if (G.dialog) { G.dialog.chars += dt * 45; }
   if (G.wheel) updateWheel(dt);
-  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.pickUI || G.gradeUI || G.quiz || G.wheel) { if (!p.moving) return; }
+  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.pickUI || G.gradeUI || G.soundUI || G.quiz || G.wheel) { if (!p.moving) return; }
   if (p.moving) {
     p.prog += dt / (p.run ? 0.12 : 0.2);
     if (p.prog >= 1) { p.moving = false; p.prog = 0; onStep(); }
     else return;
   }
-  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.pickUI || G.gradeUI || G.quiz || G.wheel || G.pendingEnc) return;
+  if (G.dialog || G.choice || G.menu || G.partyUI || G.bagUI || G.shopUI || G.mapUI || G.statsUI || G.dexUI || G.pickUI || G.gradeUI || G.soundUI || G.quiz || G.wheel || G.pendingEnc) return;
   if (G.queued) { const k = G.queued; G.queued = null; onPress(k); return; }
   const k = G.held[G.held.length - 1];
   if (!k) return;
@@ -291,7 +293,7 @@ function updateWorld(dt) {
 let lastTS = performance.now(), tintedDone = false;
 function update(dt) {
   if (G.freeze && G.battle && G.battle.anim && G.battle.anim.kind === 'move' && G.battle.anim.side === G.freeze.side) { const a = G.battle.anim; if (a.t >= (G.freeze.cut ? a.cut * G.freeze.frac : a.cut + (a.dur - a.cut) * G.freeze.frac)) { G.timeScale = 0; G.freeze = null; } }
-  if (G.scene === 'loading' && assetsReady()) { makeTinted(); G.scene = 'title'; G.fadeIn = 1; setTimeout(() => { VoicePack.load('tutor'); VoicePack.load('mons'); VoicePack.load('npc'); }, 2500); }
+  if (G.scene === 'loading' && assetsReady()) { makeTinted(); G.scene = 'title'; G.fadeIn = 1; VoicePack.load('npc'); VoicePack.load('tutor').then(() => VoicePack.load('mons')); }
   if (G.volShow > 0) G.volShow -= dt;
   if (G.fadeIn > 0) G.fadeIn = Math.max(0, G.fadeIn - dt * 1.6);
   if (AudioSys.started) { const mu = musicFor(); if (mu && AudioSys.current !== mu) AudioSys.play(mu); }
@@ -333,6 +335,7 @@ function draw() {
     case 'evolve': drawEvolve(); break;
   }
   if (G.gradeUI) drawGradeUI();
+  if (G.soundUI) drawSoundUI();
   if (G.quiz) drawQuiz();
   if (G.tutor) drawTutor();
   if (G.choice) drawChoice();
@@ -378,5 +381,6 @@ window.__game = {
   event: id => { const B = G.battle; if (!B) return false; B.queue = []; B.cur = null; B.anim = null; B.evN = 0; B.turnNo = 5; return maybeBattleEvent(B, id); },
   openWish: (bi) => { openWish(); if (bi) G.wishUI.bi = bi; }, gems: n => { wishState(); G.flags.gems = n; }, doWish: n => doWish(n), wishUI: () => G.wishUI && { phase: G.wishUI.phase, ri: G.wishUI.ri, n: G.wishUI.res.length, res: G.wishUI.res.map(r => ({ star: r.star, sp: r.sp, out: r.out })) }, forceWish: (stars) => { const U = G.wishUI; const S = wishState(); const r0 = WishCore.roll; let i = 0; WishCore.roll = (S2, B) => { const st = stars[i++] || 3; return st === 5 ? { star: 5, sp: B.up5 || 'dragon', up: !!B.up5 } : st === 4 ? { star: 4, sp: B.four[i % B.four.length] } : { star: 3, sp: 'moth' }; }; try { doWish(stars.length); } finally { WishCore.roll = r0; } },
   pick: () => G.pickUI && { title: G.pickUI.title, n: G.pickUI.items.length, idx: G.pickUI.idx },
+  openSound: () => openSoundUI(), soundTest: () => soundTest(), soundRes: () => G.soundUI && G.soundUI.res,
   ridAt, scene: () => G.scene
 };
