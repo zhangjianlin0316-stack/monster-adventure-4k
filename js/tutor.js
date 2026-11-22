@@ -7,8 +7,25 @@ function openTutor(q, onClose) {
   G.tutor = { q, X, s: 0, t: 0, T: 0, onClose, auto: true, done: false };
   AudioSys.sfx('tutor_in'); tutorVoice(X.steps[0]);
 }
-function closeTutor() { const T = G.tutor; if (!T) return; G.tutor = null; AudioSys.sfx('confirm'); if (T.onClose) T.onClose(); }
-function tutorVoice(s) { AudioSys.sfx('talk'); }
+function closeTutor() { const T = G.tutor; if (!T) return; G.tutor = null; Voice.stop(); AudioSys.sfx('confirm'); if (T.onClose) T.onClose(); }
+const TUTOR_INTRO = ['别着急，星老师来啦！我们一起把这道题想清楚。', '没关系，答错是变聪明的开始哦。来，跟我一起看看。', '嗯，这道题有个小机关，我们慢慢拆开它。', '小冒险家，先深呼吸，我们一步一步来。', '这一题很多同学都会卡住，我来给你画一画。'];
+const TUTOR_OUTRO = ['你看，是不是一下子就清楚了？下次一定能答对！', '明白了吧？我相信你下次一眼就能看出来。', '好啦，记住这个方法，你的灵兽也会为你加油的！', '太棒了，又学会一招！继续冒险吧。'];
+// 星老师语音：预生成的神经语音片段拼读（intro/outro 为整句），与动画步骤同步；自动前进会等这一句说完
+function tutorVoice(s) {
+  const T = G.tutor; if (!T) return; const stepAt = T.s; T.vdur = null; T.vwait = true;
+  if (!Voice.enabled || AudioSys.muted) { T.vwait = false; AudioSys.sfx('talk'); return; }
+  VoicePack.load('tutor').then(() => {
+    if (G.tutor !== T || T.s !== stepAt) return;
+    let items = Voice.tutorItems(s);
+    if (items) {
+      if (stepAt === 0 && !T.introDone) { T.introDone = true; const L = TUTOR_INTRO[rint(0, TUTOR_INTRO.length - 1)]; if (VoicePack.has('tutor', L)) items = [{ pack: 'tutor', k: L }, { gap: 0.35 }].concat(items); }
+      if (stepAt === T.X.steps.length - 1) { const L = TUTOR_OUTRO[rint(0, TUTOR_OUTRO.length - 1)]; if (VoicePack.has('tutor', L)) items = items.concat([{ gap: 0.45 }, { pack: 'tutor', k: L }]); }
+      const t0 = T.t;
+      Voice.playSeq(items, { tag: 'tutor' }).then(d => { if (G.tutor === T && T.s === stepAt) { T.vwait = false; T.vdur = d ? t0 + d : null; } });
+    } else { Voice.tutor(s).then(d => { if (G.tutor === T && T.s === stepAt) { T.vwait = false; T.vdur = d ? T.t + d : null; } }); }
+  });
+}
+function tutorStepTime(T) { if (T.vwait) return 99; return T.vdur ? Math.max(2.4, T.vdur + 0.8) : TUTOR_STEP_T; }
 function tutorStep(d) {
   const T = G.tutor; if (!T) return; const n = T.X.steps.length;
   const ns = clamp(T.s + d, 0, n - 1);
@@ -20,17 +37,20 @@ function tutorInput(k) {
   if (k === 'cancel') return closeTutor();
   if (k === 'ok' || k === 'right' || k === 'down') { if (T.t < 0.25) return; return tutorStep(1); }
   if (k === 'left' || k === 'up') return tutorStep(-1);
+  if (k === 'voice') { Voice.setEnabled(!Voice.enabled); G.volShow = 1.6; if (Voice.enabled) tutorVoice(T.X.steps[T.s]); return; }
   if (k === 'replay' || k === 'hint') { T.s = 0; T.t = 0; T.T = 0; AudioSys.sfx('chalk'); tutorVoice(T.X.steps[0]); }
 }
 function tutorPointer(ux, uy) {
   const T = G.tutor; if (!T) return;
+  if (ux > 1305 && ux < 1355 && uy > 778 && uy < 822) return tutorInput('voice');
   if (uy > 900 - 70 && ux > 1180) { if (ux > 1420) closeTutor(); else if (ux > 1300) tutorStep(1); else tutorStep(-1); return; }
   tutorStep(1);
 }
 function updateTutor(dt) {
   const T = G.tutor; if (!T) return;
   T.t += dt; T.T += dt;
-  if (T.auto && T.t > TUTOR_STEP_T && T.s < T.X.steps.length - 1) { T.s++; T.t = 0; tutorVoice(T.X.steps[T.s]); AudioSys.sfx('chalk'); }
+  if (T.vwait && T.t > 6) T.vwait = false; // 语音加载过慢时不卡住
+  if (T.auto && T.t > tutorStepTime(T) && T.s < T.X.steps.length - 1) { T.s++; T.t = 0; tutorVoice(T.X.steps[T.s]); AudioSys.sfx('chalk'); }
 }
 // ---------- 绘制工具 ----------
 const CH_W = '#f6f3e8', CH_Y = '#ffe27a', CH_P = '#ff9ab8', CH_B = '#8fd8ff', CH_G = '#a6f5a0', CH_O = '#ffb36b';
@@ -365,7 +385,7 @@ function drawTutor() {
   ctx.restore();
   // 老师立绘
   const im = IMG.teacher; const sl = TU.e(T.T * 2.2);
-  if (im) { const h = 700, w = im.width * h / im.height, bob = Math.sin(T.T * 2) * 5, talk = T.t < 2 ? Math.abs(Math.sin(T.t * 14)) * 3 : 0; ctx.save(); ctx.globalAlpha = sl; ctx.drawImage(scaled('teacher', w, h) || im, -110 - (1 - sl) * 300, 900 - h + 20 + bob - talk, w, h); ctx.restore(); }
+  if (im) { const h = 700, w = im.width * h / im.height, bob = Math.sin(T.T * 2) * 5, talk = (Voice.curTag === 'tutor' || (!Voice.enabled && T.t < 2)) ? Math.abs(Math.sin(T.T * 14)) * 4 : 0; ctx.save(); ctx.globalAlpha = sl; ctx.drawImage(scaled('teacher', w, h) || im, -110 - (1 - sl) * 300, 900 - h + 20 + bob - talk, w, h); ctx.restore(); }
   // 对话气泡
   const bx = 330, by = 768, bw = 1250, bh = 118; ctx.save(); ctx.globalAlpha = sl;
   rrect(bx, by, bw, bh, 28, 'rgba(255,253,245,0.97)', '#ffcf5a', 4);
@@ -374,8 +394,12 @@ function drawTutor() {
   ctx.save(); ctx.globalAlpha *= fade; mathWrap(st, bx + 36, by + 42, bw - 300, st.length > 46 ? 28 : 32, 40, '#24304f', '800'); ctx.restore();
   text('第 ' + (T.s + 1) + '/' + X.steps.length + ' 步', bx + bw - 30, by + 34, 22, '#8a6a2a', 'right', '800');
   const last = T.s >= X.steps.length - 1;
-  text(last ? 'Z 明白了！　R 重播' : 'Z 下一步　← 上一步　R 重播　X 跳过', bx + bw - 30, by + 88, 20, '#8a6a2a', 'right', '700');
+  text(last ? 'Z 明白了！　R 重播　N 语音' : 'Z 下一步　← 上一步　R 重播　N 语音　X 跳过', bx + bw - 30, by + 88, 20, '#8a6a2a', 'right', '700');
+  // 语音开关按钮 + 说话波形
+  { const sx = 1330, sy = 800, on = Voice.enabled && !AudioSys.muted; ctx.save(); cdot(sx, sy, 20, on ? '#ffcf5a' : '#ccc'); text(on ? '🔊' : '🔇', sx, sy + 1, 20, '#333', 'center', '700');
+    if (Voice.curTag === 'tutor') for (let i = 0; i < 5; i++) { const h = 6 + Math.abs(Math.sin(T.T * 9 + i * 1.3)) * 18; rrect(sx + 30 + i * 14, sy - h / 2, 8, h, 4, '#ffb84a'); }
+    ctx.restore(); }
   // 自动前进进度条
-  if (!last) { rrect(bx + 36, by + bh - 14, bw - 72, 6, 3, 'rgba(0,0,0,0.08)'); rrect(bx + 36, by + bh - 14, (bw - 72) * clamp(T.t / TUTOR_STEP_T, 0, 1), 6, 3, '#ffcf5a'); }
+  if (!last) { rrect(bx + 36, by + bh - 14, bw - 72, 6, 3, 'rgba(0,0,0,0.08)'); rrect(bx + 36, by + bh - 14, (bw - 72) * clamp(T.t / Math.min(30, tutorStepTime(T)), 0, 1), 6, 3, '#ffcf5a'); }
   ctx.restore();
 }

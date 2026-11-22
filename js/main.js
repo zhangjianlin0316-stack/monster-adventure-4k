@@ -47,6 +47,9 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Shift') { G.player.run = true; return; }
   if (e.key === 'f' || e.key === 'F') { toggleFS(); e.preventDefault(); return; }
   if (e.key === 'v' || e.key === 'V') { AudioSys.setMuted(!AudioSys.muted); G.volShow = 1.6; return; }
+  if (e.key === 'n' || e.key === 'N') { if (G.tutor) tutorInput('voice'); else { Voice.setEnabled(!Voice.enabled); G.volShow = 1.6; } return; }
+  if (e.key === '[') { Voice.setVol(Voice.vol - 0.1); G.volShow = 1.6; return; }
+  if (e.key === ']') { Voice.setVol(Voice.vol + 0.1); G.volShow = 1.6; return; }
   if (e.key === '-' || e.key === '_') { AudioSys.setVol(AudioSys.vol - 0.1); G.volShow = 1.6; return; }
   if (e.key === '=' || e.key === '+') { AudioSys.setVol(AudioSys.vol + 0.1); G.volShow = 1.6; return; }
   const k = KEYMAP[e.key]; if (!k) return;
@@ -277,7 +280,7 @@ function updateWorld(dt) {
 let lastTS = performance.now(), tintedDone = false;
 function update(dt) {
   if (G.freeze && G.battle && G.battle.anim && G.battle.anim.kind === 'move' && G.battle.anim.side === G.freeze.side) { const a = G.battle.anim; if (a.t >= (G.freeze.cut ? a.cut * G.freeze.frac : a.cut + (a.dur - a.cut) * G.freeze.frac)) { G.timeScale = 0; G.freeze = null; } }
-  if (G.scene === 'loading' && assetsReady()) { makeTinted(); G.scene = 'title'; G.fadeIn = 1; }
+  if (G.scene === 'loading' && assetsReady()) { makeTinted(); G.scene = 'title'; G.fadeIn = 1; setTimeout(() => { VoicePack.load('tutor'); VoicePack.load('mons'); }, 2500); }
   if (G.volShow > 0) G.volShow -= dt;
   if (G.fadeIn > 0) G.fadeIn = Math.max(0, G.fadeIn - dt * 1.6);
   if (AudioSys.started) { const mu = musicFor(); if (mu && AudioSys.current !== mu) AudioSys.play(mu); }

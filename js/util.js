@@ -253,7 +253,8 @@ function drawTopButtons() {
   // 音量提示
   if (G.volShow > 0) {
     beginUI(); ctx.globalAlpha = Math.min(1, G.volShow * 3);
-    glass(1200, 90, 340, 70, 35, true);
+    glass(1200, 90, 340, 112, 35, true);
+    if (typeof Voice !== 'undefined') text(Voice.enabled ? '🗣 语音 ' + Math.round(Voice.vol * 100) + '%（N 开关，[ ] 调节）' : '🗣 语音已关闭（N 键开启）', 1225, 178, 20, '#ffe9a8', 'left', '700');
     text(AudioSys.muted ? '🔇 已静音（V 键切换）' : '🔊 音量 ' + Math.round(AudioSys.vol * 100) + '%', 1225, 126, 28, '#fff', 'left', '700');
     if (!AudioSys.muted) { rrect(1225, 146, 290, 6, 3, 'rgba(255,255,255,0.2)'); rrect(1225, 146, 290 * AudioSys.vol, 6, 3, '#7ff0e2'); }
     ctx.globalAlpha = 1;

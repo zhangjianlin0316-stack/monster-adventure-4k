@@ -401,7 +401,10 @@ const AudioSys = (() => {
   }
   function setMuted(m) { muted = m; try { localStorage.setItem('ls_muted', m ? '1' : '0'); } catch (e) { } if (ac) master.gain.setTargetAtTime(m ? 0 : vol, ac.currentTime, 0.05); }
   function setVol(v) { vol = clamp(v, 0, 1); try { localStorage.setItem('ls_vol', String(vol)); } catch (e) { } if (ac && !muted) master.gain.setTargetAtTime(vol, ac.currentTime, 0.05); }
+  let duckN = 0;
+  function duck(on) { if (!ac) return; duckN = Math.max(0, duckN + (on ? 1 : -1)); const now = ac.currentTime; musicBus.gain.cancelScheduledValues(now); musicBus.gain.setTargetAtTime(duckN ? 0.22 : 0.62, now, 0.12); }
   return {
+    get ac() { init(); return ac; }, get master() { init(); return master; }, get reverbIn() { init(); return revIn; }, duck,
     unlock, play, sfx, jingle, setMuted, setVol, setIntensity, get intensity() { return boost; },
     get muted() { return muted; }, get vol() { return vol; }, get started() { return !!ac && ac.state === 'running'; },
     get current() { return cur ? cur.name : (wanted || null); }, _build: build, SONGS, INST, mtof
