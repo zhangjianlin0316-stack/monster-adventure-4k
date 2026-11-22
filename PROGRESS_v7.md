@@ -22,3 +22,4 @@
 - R3 完成：修复 softSprite 不认 rgba() 颜色导致烟雾变黑块（闪避/招牌时盖住灵兽）；设置面板新增「灵兽骨骼动画」开关（localStorage ls_skel）；tests/v7_shots.js 战斗截图 94 张无控制台错误；节点测试 mathq/explain/voice/gacha/world 全部通过（数学 0 失败）
 - 性能：软件渲染下骨骼绘制 7.0 ms/只，旧版变形 8.3 ms/只（骨骼更快）
 - R4 完成：回归 e2e/smoke/cinema_shots/v6_shots/v5_shots/voice_play 全部通过；演示视频 docs/v7_skeletal_demo.mp4（53 秒，1280×720，tests/v7_video.js）；README 更新
+- 线上 Pages 已构建 8b964b0 并实测：63 套骨骼全部加载、战斗正常、无报错。v7 完成。
