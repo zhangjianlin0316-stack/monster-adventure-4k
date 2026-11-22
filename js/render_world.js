@@ -142,7 +142,7 @@ function drawProp(x, y, TS, t) {
   const cx = (x + 0.5) * TS + (h - 0.5) * TS * 0.22, by = (y + 1) * TS + TS * 0.05;
   shadowEllipse(ctx, cx + TS * 0.12, by - TS * 0.08, w * 0.42, TS * 0.26, 0.42);
   if (!img) { ctx.fillStyle = '#2e7d3a'; ctx.beginPath(); ctx.arc(cx, by - TS, TS * 0.7, 0, 6.28); ctx.fill(); return; }
-  const hh = w * img.height / img.width, sw = key.startsWith('tree') || key.includes('pine') ? Math.sin(NOW * 0.9 + x * 0.7 + y * 0.3) * 0.012 : 0;
+  const hh = w * img.height / img.width, sw = key.startsWith('tree') || key.includes('pine') || key.includes('cactus') ? (() => { const wd = windAt(x, y); if (wd.gust > 0.6 && Math.random() < 0.004 && !key.includes('cactus')) WORLD_FX.push({ x: x + 0.5 + rnd(-0.4, 0.4), y: y - 0.4, vx: rnd(1, 2.2), vy: rnd(-0.3, 0.4), r: rnd(0, 6), vr: rnd(-5, 5), t: 0, life: rnd(1.6, 2.6), c: ridAt(x, y) === 'snow' ? '#ffffff' : ['#5fae3a', '#8fd04a', '#e8c040'][Math.floor(Math.random() * 3)], leaf: true }); return wd.base * 0.014 + wd.gust * 0.05; })() : 0;
   ctx.save(); ctx.translate(cx, by); if (sw) ctx.transform(1, 0, sw, 1, 0, 0); ctx.drawImage(scaled(key, w, hh), -w / 2, -hh, w, hh); ctx.restore();
 }
 function drawTallGrass(x, y, TS, part) {
@@ -153,7 +153,7 @@ function drawTallGrass(x, y, TS, part) {
     const front = oy >= 0.8; if ((part === 'back') === front) return;
     const w = TS * ((front ? 0.56 : 0.62) + 0.18 * hash(x + i, y)), hgt = w * img.height / img.width;
     const bx = x * TS + (ox + (hash(x * 3 + i, y * 5) - 0.5) * 0.16) * TS, by = y * TS + (oy + (hash(x + i * 7, y * 2) - 0.5) * 0.08) * TS;
-    const sw = Math.sin(NOW * 1.9 + x * 0.6 + y * 0.45 + i) * 0.07 + Math.sin(NOW * 30) * rust * 0.25;
+    const sw = Math.sin(NOW * 1.9 + x * 0.6 + y * 0.45 + i) * 0.07 + windAt(x, y).gust * 0.2 + Math.sin(NOW * 30) * rust * 0.25;
     ctx.save(); ctx.translate(bx, by); ctx.transform(1, 0, sw, 1, 0, 0); ctx.drawImage(scaled(IMG[key] ? key : 'tallgrass', w, hgt), -w / 2, -hgt * 0.92, w, hgt); ctx.restore();
   });
 }
@@ -188,8 +188,10 @@ function drawPersonSprite(key, cx, by, TS, dir, prog, moving, npc, run) {
   if (!img) { ctx.fillStyle = '#3a70e0'; ctx.fillRect(cx - TS * 0.2, by - TS, TS * 0.4, TS); return; }
   const w = hgt * img.width / img.height, ph = moving ? prog * Math.PI : 0;
   const bob = moving ? Math.abs(Math.sin(ph * 2)) * TS * (run ? 0.08 : 0.05) : 0, rot = moving ? Math.sin(ph * 2) * (run ? 0.08 : 0.05) : 0;
-  const br = npc ? Math.sin(NOW * 2 + cx) * 0.012 : 0;
-  ctx.save(); ctx.translate(cx, by - bob); ctx.rotate(rot); ctx.scale(1 - br * 0.5, 1 + br); ctx.drawImage(scaled(key, w, hgt), -w / 2, -hgt, w, hgt); ctx.restore();
+  const br = npc ? Math.sin(NOW * 2 + cx) * 0.018 : (moving ? 0 : Math.sin(NOW * 2.2) * 0.012);
+  const ni = npc && typeof npc === 'object' ? npcIdle(npc) : null; const hop = ni ? ni.hop * TS * 0.12 : 0;
+  ctx.save(); ctx.translate(cx, by - bob - hop); ctx.rotate(rot + (ni ? ni.sway : 0)); ctx.scale((1 - br * 0.5) * (ni && ni.flip ? -1 : 1), 1 + br); ctx.drawImage(scaled(key, w, hgt), -w / 2, -hgt, w, hgt); ctx.restore();
+  if (ni && ni.emo) { ctx.save(); ctx.globalAlpha = 0.9; bubble(cx + TS * 0.3, by - hgt - TS * 0.1, TS * 0.8, ni.emo, '#5a7aff'); ctx.restore(); }
 }
 function bubble(cx, y, TS, s, col) {
   const k = 1 + Math.sin(NOW * 4) * 0.05; ctx.save(); ctx.translate(cx, y + Math.sin(NOW * 3) * TS * 0.05); ctx.scale(k, k);
@@ -299,6 +301,7 @@ function drawWorld() {
     }
   }
   ctx.restore();
+  drawGroundLife(TS, x0, y0, x1, y1); drawWaterLife(TS, x0, y0, x1, y1); drawFootprints(TS); updateCritters(TS, camX, camY); drawCrittersGround(TS);
   // 深度排序
   const ents = [];
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
@@ -313,19 +316,24 @@ function drawWorld() {
   BUILDINGS.forEach(b => { if (b.x + b.w >= x0 - 2 && b.x <= x1 + 2 && b.y + b.h >= y0 - 3 && b.y <= y1 + 1) ents.push({ y: (b.y + b.h) * TS, d: () => drawBuilding(b, TS) }); });
   OBJS.forEach(o => { if (o.x >= x0 - 1 && o.x <= x1 + 1 && o.y >= y0 - 1 && o.y <= y1 + 1) ents.push({ y: (o.y + 1) * TS - 2, d: () => drawObj(o, TS) }); });
   ents.push({ y: ppy + TS - 2, d: () => drawPersonSprite(null, ppx + TS / 2, ppy + TS - TS * 0.06, TS, p.dir, p.prog, p.moving, null, p.run) });
+  { const fw = drawFollower(TS); if (fw) ents.push(fw); }
   ents.sort((a, b) => a.y - b.y).forEach(e => e.d());
   // 粒子（草屑、火星）
   for (let i = WORLD_FX.length - 1; i >= 0; i--) {
     const f = WORLD_FX[i]; f.t += LAST_DT; if (f.t > f.life) { WORLD_FX.splice(i, 1); continue; }
-    f.x += f.vx * LAST_DT; f.y += f.vy * LAST_DT; if (!f.ember) f.vy += 3 * LAST_DT; f.r += f.vr * LAST_DT;
+    f.x += f.vx * LAST_DT; f.y += f.vy * LAST_DT; if (f.leaf) { f.vy = 0.5 + Math.sin(f.t * 3) * 0.6; } else if (f.dust) f.vy *= 0.92; else if (!f.ember) f.vy += 3 * LAST_DT; f.r += f.vr * LAST_DT;
     ctx.save(); ctx.translate(f.x * TS, f.y * TS); ctx.rotate(f.r); ctx.globalAlpha = 1 - f.t / f.life;
-    if (f.ember) { ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(glowSprite(f.c), -TS * 0.08, -TS * 0.08, TS * 0.16, TS * 0.16); }
+    if (f.dust) { const q = f.t / f.life; ctx.globalAlpha = 0.5 * (1 - q); ctx.fillStyle = f.c; ctx.beginPath(); ctx.arc(0, 0, TS * (0.05 + q * 0.09), 0, 6.28); ctx.fill(); }
+    else if (f.leaf) { ctx.scale(1, Math.abs(Math.sin(f.t * 6)) * 0.8 + 0.2); ctx.fillStyle = f.c; ctx.beginPath(); ctx.ellipse(0, 0, TS * 0.07, TS * 0.035, 0, 0, 6.28); ctx.fill(); }
+    else if (f.ember) { ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(glowSprite(f.c), -TS * 0.08, -TS * 0.08, TS * 0.16, TS * 0.16); }
     else { ctx.fillStyle = f.c; ctx.beginPath(); ctx.ellipse(0, 0, TS * 0.06, TS * 0.022, 0, 0, 6.28); ctx.fill(); }
     ctx.restore();
   }
   if (G.pendingEnc) { const k = 1 - G.pendingEnc.t / 0.7, s = Math.min(1, k * 4); ctx.save(); ctx.translate(ppx + TS / 2, ppy - TS * 0.55); ctx.scale(s, s); bubble(0, 0, TS, '!', '#e8343a'); ctx.restore(); }
+  drawCrittersAir(TS);
   ctx.restore();
   drawAmbient(camX, camY, TS);
+  { const rid0 = ridAt(Math.round(fx), Math.round(fy)); drawSkyLife(camX, camY, TS, rid0); ctx.save(); ctx.translate(-camX, -camY); drawNightLights(TS); ctx.restore(); }
   // 地区色调（平滑过渡）
   const tgt = REGION_TINT[ridAt(Math.round(fx), Math.round(fy))] || REGION_TINT.meadow;
   for (let i = 0; i < 4; i++) TINT_NOW[i] += (tgt[i] - TINT_NOW[i]) * Math.min(1, LAST_DT * 2);

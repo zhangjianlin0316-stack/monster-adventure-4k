@@ -251,12 +251,12 @@ function pickWild() {
   const m = makeMon(sp, rint(R.lv[0], R.lv[1])); if (Math.random() < 1 / 64) m.shiny = true; return m;
 }
 function onStep() {
-  const p = G.player; markExplored(p.x, p.y);
+  const p = G.player; markExplored(p.x, p.y); stepFx(p.x, p.y);
   const rid = ridAt(p.x, p.y);
   if (rid !== G.lastRid) { if (G.lastRid) { G.regionBanner = REGIONS[RIDX[rid]].n; G.regionShow = NOW; } G.lastRid = rid; G.flags.visited = G.flags.visited || {}; if (!G.flags.visited[rid]) { G.flags.visited[rid] = 1; if (Object.keys(G.flags.visited).length > 1) { addStars(3); toast('发现新地区：' + REGIONS[RIDX[rid]].n + '！★3'); } } }
   if (MAP[p.y][p.x] === T.TALL) {
     RUSTLE.set(p.x + ',' + p.y, NOW); spawnGrassFx(p.x, p.y); AudioSys.sfx('grass');
-    if (G.party.some(m => m.hp > 0) && Math.random() < 1 / 9) { G.pendingEnc = { t: 0.7, mon: pickWild() }; AudioSys.sfx('encounter'); G.held = []; }
+    if (!G.noEnc && G.party.some(m => m.hp > 0) && Math.random() < 1 / 9) { G.pendingEnc = { t: 0.7, mon: pickWild() }; AudioSys.sfx('encounter'); G.held = []; }
     else if (Math.random() < 1 / 160) { toast('草丛里藏着一个幸运转盘！'); openWheel(); }
   } else AudioSys.sfx('step');
 }
@@ -286,7 +286,7 @@ function updateWorld(dt) {
   G.moveCD -= dt;
   const nx = p.x + dx, ny = p.y + dy;
   if (tileAt(nx, ny) === T.DOOR) { G.held = []; doorAction(nx, ny); return; }
-  if (walkable(nx, ny)) { p.fx = p.x; p.fy = p.y; p.x = nx; p.y = ny; p.moving = true; p.prog = 0; }
+  if (walkable(nx, ny)) { p.fx = p.x; p.fy = p.y; followStep(p.x, p.y); p.x = nx; p.y = ny; p.moving = true; p.prog = 0; }
   else if (!G.bumpT || NOW - G.bumpT > 0.35) { G.bumpT = NOW; AudioSys.sfx('bump'); const g = gateAt(nx, ny); if (g && !G.gateHint) { G.gateHint = 1; toast('面对' + g.name + '按 Z 挑战数学题！'); } }
 }
 // ---------- 主循环 ----------

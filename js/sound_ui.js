@@ -1,6 +1,6 @@
 'use strict';
 // ================== 声音与语音设置面板（菜单 / 标题 / 右上角喇叭按钮打开） ==================
-const SOUND_ROWS = ['test', 'voice', 'vvol', 'music', 'mvol', 'reload', 'close'];
+const SOUND_ROWS = ['test', 'voice', 'vvol', 'music', 'mvol', 'reload', 'quality', 'day', 'close'];
 function openSoundUI() { AudioSys.unlock(); G.soundUI = { row: 0, res: null, busy: false, t0: NOW }; }
 function soundRowLabel(r) {
   switch (r) {
@@ -10,6 +10,8 @@ function soundRowLabel(r) {
     case 'music': return '音乐与音效：' + (AudioSys.muted ? '关' : '开');
     case 'mvol': return '音乐音量：' + Math.round(AudioSys.vol * 100) + '%　（← →）';
     case 'reload': return '重新下载语音包';
+    case 'quality': return '画质：' + (ALIVE.q === 'low' ? '省电（关闭部分动画）' : '高（灵兽全身动画 + 地图生机）');
+    case 'day': return '昼夜变化：' + (ALIVE.day === 'day' ? '固定白天' : '开（8 分钟一轮）');
     case 'close': return '关闭';
   }
 }
@@ -33,24 +35,26 @@ function soundInput(k) {
     if (r === 'music') AudioSys.setMuted(!AudioSys.muted);
     if (r === 'vvol' || r === 'mvol') soundInput('right');
     if (r === 'reload') { VoicePack.retry('tutor').then(() => VoicePack.retry('mons')); VoicePack.retry('npc'); U.res = { text: '正在重新下载语音包…', c: '#ffe08a' }; }
+    if (r === 'quality') setQuality(ALIVE.q === 'low' ? 'high' : 'low');
+    if (r === 'day') { ALIVE.day = ALIVE.day === 'day' ? 'cycle' : 'day'; try { localStorage.setItem('ls_daycycle', ALIVE.day); } catch (e) { } }
     if (r === 'close') G.soundUI = null;
   }
   AudioSys.sfx('cursor');
 }
 function soundPointer(x, y) {
-  const U = G.soundUI; for (let i = 0; i < SOUND_ROWS.length; i++) { const ry = 250 + i * 62; if (x > 430 && x < 1170 && y > ry - 28 && y < ry + 28) { U.row = i; return soundInput('ok'); } }
+  const U = G.soundUI; for (let i = 0; i < SOUND_ROWS.length; i++) { const ry = 236 + i * 50; if (x > 430 && x < 1170 && y > ry - 28 && y < ry + 28) { U.row = i; return soundInput('ok'); } }
   if (x < 380 || x > 1220 || y < 120 || y > 820) G.soundUI = null;
 }
 function drawSoundUI() {
   const U = G.soundUI; if (!U) return; beginUI();
   ctx.fillStyle = 'rgba(8,12,30,0.55)'; ctx.fillRect(-2000, -2000, 6000, 6000);
   glass(380, 120, 840, 700, 30, true, 'rgba(255,210,110,0.9)');
-  text('声音与语音', 800, 170, 40, '#ffe08a', 'center', '900', 'middle', true);
-  SOUND_ROWS.forEach((r, i) => { const y = 250 + i * 62; if (i === U.row) selBar(430, y - 26, 740, 52); text(soundRowLabel(r), 470, y + 1, 28, r === 'test' ? '#ffe08a' : '#fff', 'left', '800', 'middle', true); });
+  text('声音 · 语音 · 画质', 800, 170, 40, '#ffe08a', 'center', '900', 'middle', true);
+  SOUND_ROWS.forEach((r, i) => { const y = 236 + i * 50; if (i === U.row) selBar(430, y - 23, 740, 46); text(soundRowLabel(r), 470, y + 1, 26, r === 'test' ? '#ffe08a' : '#fff', 'left', '800', 'middle', true); });
   const pt = VoicePack.progress('tutor'), pm = VoicePack.progress('mons'), ac = AudioSys.ac ? AudioSys.ac.state : '无';
   const st = (p) => p.done ? (p.bad ? '缺 ' + p.bad + ' 片' : '已就绪') : p.pct + '%';
-  text('语音包　星老师：' + st(pt) + '　灵兽：' + st(pm) + '　｜　声音引擎：' + (ac === 'running' ? '运行中' : ac), 800, 700, 22, '#c9d6ff', 'center', '700');
-  if (Voice.busy()) for (let i = 0; i < 7; i++) { const h = 8 + Math.abs(Math.sin(NOW * 9 + i * 1.3)) * 26; rrect(1060 + i * 14, 250 - h / 2, 8, h, 4, '#ffb84a'); }
+  text('语音包　星老师：' + st(pt) + '　灵兽：' + st(pm) + '　｜　声音引擎：' + (ac === 'running' ? '运行中' : ac), 800, 694, 22, '#c9d6ff', 'center', '700');
+  if (Voice.busy()) for (let i = 0; i < 7; i++) { const h = 8 + Math.abs(Math.sin(NOW * 9 + i * 1.3)) * 26; rrect(1060 + i * 14, 236 - h / 2, 8, h, 4, '#ffb84a'); }
   if (U.res) mathWrap(U.res.text, 420, 735, 760, 22, 30, U.res.c, '700');
   text('↑↓ 选择　Z 确认　← → 调音量　X 关闭', 800, 800, 20, '#9fb0d8', 'center', '700');
 }

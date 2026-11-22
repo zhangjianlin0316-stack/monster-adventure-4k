@@ -78,7 +78,7 @@ function drawCreature(c, sp, x, y, size, opt) {
   const k = size / Math.max(im.width, im.height);
   const w = im.width * k, h = im.height * k;
   const t = opt.t !== undefined ? opt.t : NOW;
-  const br = opt.breathe ? Math.sin(t * 2.4 + (opt.phase || 0)) : 0;
+  const br = opt.breathe && (typeof ALIVE === 'undefined' || ALIVE.q === 'low') ? Math.sin(t * 2.4 + (opt.phase || 0)) : 0;
   const sy = (1 + br * 0.018) * (opt.sy || 1), sx = (1 - br * 0.01) * (opt.sx || 1);
   const m = c.getTransform(), dev = Math.hypot(m.a, m.b);
   c.save();
@@ -90,13 +90,20 @@ function drawCreature(c, sp, x, y, size, opt) {
   c.scale(opt.back ? -sx : sx, sy);
   const pw = Math.max(1, Math.round(w * dev * Math.abs(sx))), ph = Math.max(1, Math.round(h * dev * sy));
   const src = (pw < im.width * 0.7) ? scaled(sp, pw, ph) : im;
+  // v6：活体变形（呼吸/摆动/尾巴翅膀/眨眼/小动作），见 js/alive.js
+  let fr = null;
+  if (opt.alive !== false && typeof aliveFrame === 'function' && opt.t !== 0) fr = aliveFrame(sp, src, pw, ph, t, opt);
+  let dsrc = src, dw = pw, dh = ph, X0 = -w / 2, Y0 = -h, DW = w, DH = h;
+  if (fr) { dsrc = fr.cv; dw = fr.w; dh = fr.h; const kx = w / pw, ky = h / ph; X0 = -w / 2 - fr.m * kx; Y0 = -h - fr.m * ky + (fr.hopY || 0) * ky; DW = fr.w * kx; DH = fr.h * ky; }
   const fl = opt.silhouette ? 1 : opt.flash;
   if (fl) {
-    const fc = FLASH_CANVAS; if (fc.width < pw || fc.height < ph) { fc.width = Math.max(fc.width, pw); fc.height = Math.max(fc.height, ph); }
+    const fc = FLASH_CANVAS; if (fc.width < dw || fc.height < dh) { fc.width = Math.max(fc.width, dw); fc.height = Math.max(fc.height, dh); }
     const f = fc.getContext('2d'); f.setTransform(1, 0, 0, 1, 0, 0); f.globalCompositeOperation = 'source-over'; f.clearRect(0, 0, fc.width, fc.height);
-    f.imageSmoothingQuality = 'high'; f.drawImage(src, 0, 0, pw, ph);
-    f.globalCompositeOperation = 'source-atop'; f.fillStyle = opt.silhouette || opt.flashColor || ('rgba(255,255,255,' + fl + ')'); f.fillRect(0, 0, pw, ph);
-    c.drawImage(fc, 0, 0, pw, ph, -w / 2, -h, w, h);
+    f.imageSmoothingQuality = 'high'; f.drawImage(dsrc, 0, 0, dw, dh, 0, 0, dw, dh);
+    f.globalCompositeOperation = 'source-atop'; f.fillStyle = opt.silhouette || opt.flashColor || ('rgba(255,255,255,' + fl + ')'); f.fillRect(0, 0, dw, dh);
+    c.drawImage(fc, 0, 0, dw, dh, X0, Y0, DW, DH);
+  } else if (fr) {
+    c.drawImage(dsrc, 0, 0, dw, dh, X0, Y0, DW, DH);
   } else {
     c.drawImage(src, -w / 2, -h, w, h);
   }
