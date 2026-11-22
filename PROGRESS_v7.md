@@ -10,10 +10,11 @@
 - 检查：tests/skel_sheet.js（SP=a,b 每只各动作关键帧表 → /tmp/skel）；/tmp/rigdbg/<sp>.jpg 部件分配图
 
 ## 里程碑
-- [ ] R1 运行时 + 四足（fox/fawn/cat 线）
-- [ ] R2 其余四足/双足/鸟/蛇形/漂浮 全部 63 只
+- [x] R1 运行时 + 四足（fox/fawn/cat 线）
+- [x] R2 其余四足/双足/鸟/蛇形/漂浮 全部 63 只（tools/rig/rigs_*.json；类型 quad/biped/bird/serpent/float/blob）
 - [ ] R3 战斗/大地图/图鉴接入片段（出招、招牌、奥义、受击、闪避、胜利、倒下、跟随行走）+ 事件同步
 - [ ] R4 测试、演示视频 docs/v7_skeletal_demo.mp4、Pages
 
 ## 记录
-- 已绑定：fox fox2 fox3 fawn fawn2 fawn3 cat cat2 cat3
+- 已绑定：全部 63 只（tests/skel_overview.js → /tmp/skelov/ov_*.jpg 总览）
+- R3 进行中：战斗 skelBattle（出招/奥义/招牌/受击/击飞/闪避/胜利/倒下 + 交叉淡入 + 命中/咆哮事件特效）、跟随灵兽走路、图鉴/祈愿/选择界面展示模式已接入

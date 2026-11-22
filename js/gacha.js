@@ -93,7 +93,7 @@ function drawWish() {
   // 主视觉
   const fx = 520, fy = 720; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5; ctx.drawImage(softSprite(B.up5 ? '#ffcc4a' : '#c27bff'), fx - 380, fy - 640, 760, 700); ctx.restore();
   for (let i = 0; i < 16; i++) { const a = i / 16 * 6.28 + NOW * 0.15; ctx.save(); ctx.globalAlpha = 0.12; ctx.strokeStyle = '#fff3c0'; ctx.lineWidth = 18; ctx.beginPath(); ctx.moveTo(fx, fy - 300); ctx.lineTo(fx + Math.cos(a) * 900, fy - 300 + Math.sin(a) * 900); ctx.stroke(); ctx.restore(); }
-  const feat = B.up5 || 'dragon3'; drawCreature(ctx, B.up5 ? B.up5 : feat, fx, fy, 560, { breathe: true, t: NOW });
+  const feat = B.up5 || 'dragon3'; drawCreature(ctx, B.up5 ? B.up5 : feat, fx, fy, 560, { breathe: true, t: NOW, showcase: true });
   if (!B.up5) { drawCreature(ctx, 'cat3', fx - 300, fy + 20, 330, { breathe: true, t: NOW + 1, alpha: 0.95 }); drawCreature(ctx, 'crane2', fx + 300, fy + 10, 330, { breathe: true, t: NOW + 2, alpha: 0.95 }); }
   text(B.name, 70, 150, 50, '#fff', 'left', '900', 'middle', true);
   text(B.up5 ? 'UP 传说 5★：' + SPECIES[B.up5].n + '　（每天轮换）' : '5★ 史诗灵兽：灵纹猫 · 墨鳞幼龙 · 白羽鹤', 70, 205, 26, '#ffe08a', 'left', '800', 'middle', true);
@@ -134,7 +134,7 @@ function drawReveal(U) {
   const ap = easeOut(clamp(t * (r.star === 5 ? 1.4 : 2.5), 0, 1));
   if (r.sp) {
     const sil = t < (r.star === 5 ? 0.6 : 0.25);
-    ctx.save(); ctx.globalAlpha = ap; drawCreature(ctx, r.sp, 800 - (1 - ap) * 200, 700, 520 + (r.star === 5 ? (1 - ap) * 200 : 0), sil ? { silhouette: hexA(c, 0.95) } : { breathe: true, t: NOW, shiny: false }); ctx.restore();
+    ctx.save(); ctx.globalAlpha = ap; drawCreature(ctx, r.sp, 800 - (1 - ap) * 200, 700, 520 + (r.star === 5 ? (1 - ap) * 200 : 0), sil ? { silhouette: hexA(c, 0.95) } : { breathe: true, t: NOW, showcase: true, shiny: false }); ctx.restore();
     if (!sil && t < 0.9) { ctx.fillStyle = 'rgba(255,255,255,' + (1 - t / 0.9) * 0.6 + ')'; ctx.fillRect(-400, -200, 2400, 1300); }
     text(SPECIES[r.sp].n, 160, 600, 64, '#fff', 'left', '900', 'middle', true);
     text(RARITY[SPECIES[r.sp].rar].n + ' · ' + TYPES[SPECIES[r.sp].t].n + '属性', 160, 660, 28, c, 'left', '900', 'middle', true);

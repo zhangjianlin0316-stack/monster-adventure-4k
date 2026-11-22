@@ -192,7 +192,7 @@ function drawPartyUI() {
   const st = stats(m), sp = SPECIES[m.sp];
   glass(860, 104, 690, 740, 34, false, TYPES[sp.t].c);
   const g = ctx.createRadialGradient(1060, 300, 20, 1060, 300, 220); g.addColorStop(0, lighten(TYPES[sp.t].c, 0.75)); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(860, 110, 400, 380);
-  shadowEllipse(ctx, 1060, 440, 120, 22, 0.3); drawCreature(ctx, m.sp, 1060, 440, 300, { breathe: true });
+  shadowEllipse(ctx, 1060, 440, 120, 22, 0.3); drawCreature(ctx, m.sp, 1060, 440, 300, { breathe: true, showcase: true });
   text(sp.n, 1250, 160, 44, '#1b2440', 'left', '900');
   text('Lv.' + m.lvl + '　第' + ['一', '二', '三'][sp.stage - 1] + '形态', 1250, 212, 28, '#3a4870', 'left', '800');
   typeBadge(sp.t, 1250, 236, 110, 40);
@@ -424,7 +424,7 @@ function drawStarter() {
     const g = ctx.createRadialGradient(x, 380 + lift, 10, x, 380 + lift, 230); g.addColorStop(0, lighten(c, sel ? 0.55 : 0.75)); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 205, 145 + lift, 410, 380);
     if (sel) rrect(x - 210, 140 + lift, 420, 480, 36, null, '#ffb04a', 5);
     shadowEllipse(ctx, x, 470 + lift, 130, 26, 0.35);
-    drawCreature(ctx, sp, x, 470 + lift - (sel ? Math.abs(Math.sin(NOW * 3)) * 14 : 0), sel ? 330 : 280, { breathe: true, phase: i });
+    drawCreature(ctx, sp, x, 470 + lift - (sel ? Math.abs(Math.sin(NOW * 3)) * 14 : 0), sel ? 330 : 280, { breathe: true, phase: i, showcase: sel });
     text(SPECIES[sp].n, x, 528 + lift, 44, sel ? '#1b2440' : '#fff', 'center', '900');
     typeBadge(SPECIES[sp].t, x - 55, 562 + lift, 110, 42);
     // 进化预览

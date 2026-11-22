@@ -43,7 +43,7 @@ function drawDexUI() {
   const sp = DEX_ORDER[U.idx], S = SPECIES[sp], st = dexStatus(sp), R = RARITY[S.rar], dx = 960;
   glass(dx, 110, 570, 740, 28, true, R.c);
   ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = st ? 0.55 : 0.15; ctx.drawImage(softSprite(R.c), dx + 85, 120, 400, 380); ctx.restore();
-  drawCreature(ctx, sp, dx + 285, 470, 330, st ? { breathe: true, t: NOW } : { silhouette: 'rgba(20,30,60,0.92)' });
+  drawCreature(ctx, sp, dx + 285, 470, 330, st ? { breathe: true, t: NOW, showcase: true } : { silhouette: 'rgba(20,30,60,0.92)' });
   text('No.' + String(U.idx + 1).padStart(3, '0'), dx + 30, 146, 22, '#aab8dd', 'left', '800');
   rarityTag(S.rar, dx + 440, 146, false);
   if (!st) { text('？？？', dx + 285, 530, 44, '#7a86a8', 'center', '900'); text('还没有遇见过这只灵兽。', dx + 285, 590, 24, '#aab8dd', 'center', '700'); text('线索：' + dexWhere(sp), dx + 285, 640, 20, '#7ff0e2', 'center', '700'); return drawHint('方向键 选择　X/Esc 关闭', true); }

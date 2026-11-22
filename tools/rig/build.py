@@ -5,7 +5,7 @@ from scipy import ndimage as ndi
 ROOT = '/workspace/mg-repo'
 RIGS = {}
 import glob
-for fn in sorted(glob.glob(os.path.join(os.path.dirname(__file__), 'rigs*.json'))): RIGS.update(json.load(open(fn)))
+for fn in sorted(glob.glob(os.path.join(os.path.dirname(__file__), 'rigs_*.json'))): RIGS.update(json.load(open(fn)))
 DEF_R = dict(body=1.2, head=1.4, leg=0.22, tail=0.35, wing=0.3, arm=0.22, spine=0.55, tent=0.12, ear=0.2, extra=0.3)
 CAP = dict(head=0.55, leg=0.32, tail=0.38, wing=0.4, arm=0.32, spine=0.5, tent=0.2, ear=0.2, extra=0.3)
 CLOSE = dict(body=0.9, head=0.5, leg=0.2, tail=0.4, wing=0.4, arm=0.2, spine=0.5, tent=0.12, ear=0.15, extra=0.3)
@@ -45,6 +45,7 @@ def bones_of(R):
     for ci, T in enumerate(R.get('tails', [])):
         tr = R.get('tailsR', [0.6] * 9)[ci] if 'tailsR' in R else 0.6; nm = 'tail' + 'BCDEFG'[ci]
         prev = R.get('tailParent', 'body')
+        if isinstance(T, dict): prev = T.get('p', prev); tr = T.get('r', tr); T = T['pts']
         for i in range(len(T) - 1): add('%s%d' % (nm, i), prev, T[i], T[i], T[i + 1], 'tail', tr, idx=i); prev = '%s%d' % (nm, i)
     for side, P in R.get('wings', {}).items():
         r = P[3] if len(P) > 3 else None; wp = R.get('wingParent', 'body')
@@ -54,6 +55,8 @@ def bones_of(R):
         for j in range(len(P) - 1): add('t%d_%d' % (i, j), prev, P[j], P[j], P[j + 1], 'tent', R.get('tentR'), idx=j, tn=i); prev = 't%d_%d' % (i, j)
     for i, E in enumerate(R.get('ears', [])):
         add('ear%d' % i, 'head', E[0], E[0], E[1], 'ear', E[2] if len(E) > 2 else None, idx=i)
+    for E in R.get('props', []):
+        add(E['n'], E.get('p', 'body'), E['a'], E['a'], E['b'], 'extra', E.get('r', 0.25))
     for i, E in enumerate(R.get('extras', [])):
         add(E['n'], E.get('p', 'body'), E['a'], E['a'], E['b'], 'extra', E.get('r'))
     return B
@@ -61,19 +64,20 @@ def bones_of(R):
 def default_z(R, B):
     names = [b['n'] for b in B]; z = []
     far = lambda n: n.startswith(('FF', 'BF', 'AF', 'wF', 'LF')) or n.startswith('F_') and False
-    z += [n for n in names if n[:2] in ('wF',)]
-    z += [n for n in names if n[:2] in ('BF', 'FF', 'AF')]
+    z += [n for n in names if n[:2] in ('wF', 'wC')]
+    if R.get('wingsBack'): z += [n for n in names if n[:2] in ('wN', 'wB')]
+    z += [n for n in names if n[:2] in ('BF', 'FF', 'AF', 'LF')]
     z += [n for n in names if n.startswith('tail')] if not R.get('tailFront') else []
     z += [n for n in names if n.startswith('t') and '_' in n and not n.startswith('tail')]
     z += [n for n in names if n.startswith('sp') and B[names.index(n)].get('ch') == 't'][::-1]
     z += ['body']
     z += [n for n in names if n.startswith('sp') and B[names.index(n)].get('ch') == 'h']
-    z += [n for n in names if n[:2] in ('BN', 'FN')]
+    z += [n for n in names if n[:2] in ('BN', 'FN', 'LN')]
     z += [n for n in names if n.startswith('tail')] if R.get('tailFront') else []
     z += [n for n in names if n.startswith('ear')]
     z += ['head'] if 'head' in names else []
     z += [n for n in names if n[:2] in ('AN',)]
-    z += [n for n in names if n[:2] in ('wN',)]
+    z += [n for n in names if n[:2] in ('wN', 'wB') and n not in z]
     z += [n for n in names if n not in z]
     if 'z' in R:  # 覆盖：列出的部件按给定顺序，其他保持
         rest = [n for n in z if n not in R['z']]; z = R['z'] + rest if R.get('zFirst') else [n for n in z if n not in R['z']] and _merge(z, R['z'])
@@ -133,6 +137,14 @@ def build(sp, R, outdir, dbg=None):
         hole = cl & (A > 100) & (m < 0.5)
         if b['kind'] in ('body', 'spine'):
             hole |= (A > 100) & (m < 0.5) & ndi.binary_fill_holes(cl)
+        # 子部件根部下方也补色：转动子部件（头/腿/尾）时露出的是“身体”而不是空洞
+        ext = dict(body=0.75, spine=0.55, head=0.3, leg=0.15, arm=0.18, tail=0.25, wing=0.25).get(b['kind'], 0.15)
+        kids = [j for j, c in enumerate(B) if c['p'] == b['n']]
+        if kids:
+            kd = np.zeros_like(own)
+            for j in kids: kd |= (asg == j)
+            ek = max(3, int(ext * G) | 1)
+            hole |= cv2.dilate(own.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ek, ek))) .astype(bool) & kd & (A > 100) & (m < 0.5)
         layer = np.zeros((H, W, 4), np.float32)
         mf = cv2.GaussianBlur(m, (0, 0), 0.9)
         mf = np.maximum(mf * (m > 0.02), m)
@@ -175,11 +187,13 @@ def build(sp, R, outdir, dbg=None):
     os.makedirs(outdir, exist_ok=True)
     Image.fromarray(a8, 'RGBA').save(f'{outdir}/{sp}.webp', quality=88, method=5)
     z = default_z(R, B)
-    out = dict(w=W, h=H, type=R['type'], face=R.get('face', -1), aw=AW, ah=AH,
+    tot = max(1, int(opaque.sum())); hf = float(((asg == idx['head']) & opaque).sum()) / tot if 'head' in idx else 0
+    out = dict(w=W, h=H, hf=round(hf, 3), type=R['type'], face=R.get('face', -1), aw=AW, ah=AH,
                bones=[dict(n=b['n'], p=b['p'], x=round(b['piv'][0] * gx, 1), y=round(b['piv'][1] * gy, 1),
                            ex=round(b['b'][0] * gx, 1), ey=round(b['b'][1] * gy, 1), k=b['kind'],
                            **{kk: b[kk] for kk in ('side', 'idx', 'ch', 'tn') if kk in b}) for b in B],
                parts=[dict(b=B[i]['n'], sx=place[i][0], sy=place[i][1], w=crops[i][2], h=crops[i][3], x=crops[i][0], y=crops[i][1]) for i in sorted(order, key=lambda i: z.index(B[i]['n']))])
+    if R.get('lidBone'): out.setdefault('opts', {})
     for k in ('opts',):
         if k in R: out[k] = R[k]
     if dbg is not None:
@@ -198,7 +212,7 @@ def build(sp, R, outdir, dbg=None):
 if __name__ == '__main__':
     only = sys.argv[1:]
     outdir = f'{ROOT}/assets/rig'; dbgdir = '/tmp/rigdbg'; os.makedirs(dbgdir, exist_ok=True)
-    dbfile = f'{ROOT}/tools/rig/rigs_built.json'
+    dbfile = f'{ROOT}/tools/rig/built.json'
     allout = json.load(open(dbfile)) if os.path.exists(dbfile) else {}
     for sp, R in RIGS.items():
         if sp.startswith('_') or (only and sp not in only): continue

@@ -33,7 +33,8 @@ function skelInfo(sp) {
     else if (/^(BN|BF|LN|LF)_/.test(n)) { g = 'legB'; seg = n.endsWith('_l') ? 1 : 0; near = n[1] === 'N' ? 1 : 0; }
     else if (/^(AN|AF)_/.test(n)) { g = 'arm'; seg = n.endsWith('_l') ? 1 : 0; near = n[1] === 'N' ? 1 : 0; }
     else if (/^tail/.test(n)) { g = 'tail'; ord = b.idx || 0; }
-    else if (/^w[NF]\d/.test(n)) { g = 'wing'; seg = +n[2]; near = n[1] === 'N' ? 1 : 0; }
+    else if (/^w[NFBC]\d/.test(n)) { g = 'wing'; seg = +n[2]; near = n[1] === 'N' || n[1] === 'B' ? 1 : 0; }
+    else if (/^pr/.test(n)) g = 'prop';
     else if (/^t\d+_\d+/.test(n)) { g = 'tent'; ord = b.idx || 0; seg = b.tn || 0; }
     else if (/^sp\d/.test(n)) { g = b.ch === 'h' ? 'neck' : 'spine'; ord = b.idx || 0; }
     else if (/^ear/.test(n)) { g = 'ear'; ord = b.idx || 0; }
@@ -45,7 +46,7 @@ function skelInfo(sp) {
   const parts = R.parts.map(p => Object.assign({ bi: idx[p.b] }, p));
   const cnt = {}; B.forEach(b => cnt[b.g] = Math.max(cnt[b.g] || 0, b.ord + 1));
   const has = g => B.some(b => b.g === g);
-  I = SKEL.info[sp] = { lidB: R.bones.some(b => b.n === 'head') ? 'head' : 'body', R, B, parts, G, face: R.face, front, cnt, has, type: R.type, seed: _hs(sp.length, sp.charCodeAt(0) + sp.charCodeAt(sp.length - 1)), amp: (R.opts && R.opts.amp) || {} };
+  I = SKEL.info[sp] = { lidB: (R.opts && R.opts.lidBone) || (R.bones.some(b => b.n === 'head') ? 'head' : 'body'), fly: !!(R.opts && R.opts.fly), R, B, parts, G, face: R.face, front, cnt, has, type: R.type, seed: _hs(sp.length, sp.charCodeAt(0) + sp.charCodeAt(sp.length - 1)), amp: (R.opts && R.opts.amp) || {} };
   return I;
 }
 function skelReady(sp) {
@@ -66,7 +67,7 @@ function poseIdle(I, t, out, k, ex) {
       case 'body': o.sy += k * 0.022 * Math.sin(t * 2.4 + s) * (A.br || 1); r = 0.8 * Math.sin(t * 1.1 + s); break;
       case 'head': r = 3 * Math.sin(t * 1.3 + 1 + s) + 1.5 * Math.sin(t * 2.9 + s); o.y += k * 0.02 * Math.sin(t * 2.4 + s + 0.6); break;
       case 'tail': r = (6 + b.ord * 4) * Math.sin(t * (ex ? 5 : 2.8) - b.ord * 0.9 + s) * (A.tail || 1); break;
-      case 'wing': r = (ty === 'float' ? 16 : 5) * (b.seg ? 0.6 : 1) * Math.sin(t * (ty === 'float' ? 6 : 2.6) * (ex ? 1.5 : 1) + s - b.seg * 0.6) * (A.wing || 1); break;
+      case 'wing': r = (ty === 'float' || I.fly ? 18 : 5) * (b.seg ? 0.6 : 1) * Math.sin(t * (ty === 'float' || I.fly ? 6 : 2.6) * (ex ? 1.5 : 1) + s - b.seg * 0.6) * (A.wing || 1); break;
       case 'tent': r = (7 + b.ord * 5) * Math.sin(t * 2.4 - b.ord * 0.9 + b.seg * 1.7 + s) * (A.tent || 1); break;
       case 'spine': r = (3 + b.ord * 1.2) * Math.sin(t * 1.8 - b.ord * 0.8 + s) * (A.spine || 1); break;
       case 'neck': r = 2.5 * Math.sin(t * 1.6 + b.ord * 0.7 + s); break;
@@ -330,6 +331,7 @@ function skelDraw(c, sp, st, lids, blink) {
 const SK_FC = document.createElement('canvas');
 function skelState(sp, t, opt) {
   if (opt.skel) return Object.assign({ t }, opt.skel);
+  if (opt.showcase) return showcaseState(t, (_hs(sp.length, sp.charCodeAt(0)) * 10) + (opt.phase || 0));
   return { t, clip: 'idle', walk: opt.walk || 0, spd: opt.spd, ex: opt.excited, fid: opt.fidget };
 }
 function skelCreature(c, sp, w, h, pw, ph, t, opt, seed) {
@@ -344,3 +346,61 @@ function skelCreature(c, sp, w, h, pw, ph, t, opt, seed) {
   g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = opt.silhouette || opt.flashColor || ('rgba(255,255,255,' + fl + ')'); g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over';
   const kx = w / pw, ky = h / ph; c.drawImage(SK_FC, 0, 0, W, H, -w / 2 - m * kx, -h - m * ky, W * kx, H * ky);
 }
+
+// ---------- 头部过大的造型：降低头部转动幅度，避免露出身体缺口 ----------
+function headK(I) { const hf = I.R.hf || 0; return hf > 0.38 ? 0.4 : hf > 0.28 ? 0.6 : hf > 0.2 ? 0.8 : 1; }
+const _skelPose0 = skelPose;
+skelPose = function (I, st) {
+  const out = _skelPose0(I, st); if (I.hk === undefined) I.hk = headK(I);
+  if (I.hk < 1) for (let i = 0; i < I.B.length; i++) if (I.B[i].g === 'head') { out[i].r *= I.hk; }
+  return out;
+};
+// ---------- 展示模式（图鉴/祈愿/选择初始灵兽）：待机中每隔几秒表演一个动作 ----------
+const SHOW_SEQ = ['special', 'attack', 'victory', 'ult', 'dodge'];
+function showcaseState(t, seed) {
+  const P = 6.5, k = Math.floor((t + seed * 7) / P), q = (t + seed * 7) - k * P, clip = SHOW_SEQ[k % SHOW_SEQ.length], d = CLIP[clip].dur * 1.15;
+  if (q < 4.6 || q > 4.6 + d) return { t, clip: 'idle' };
+  const u = (q - 4.6) / d, w = Math.min(1, Math.min(u, 1 - u) * 8);
+  return { t, clip, u, w };
+}
+// ---------- 战斗：根据战斗队列里的动画决定每一方的骨骼片段 ----------
+function skelBattle(B, A, side, m, NOWT) {
+  const mem = B.skelMem || (B.skelMem = {}); const M = mem[side] || (mem[side] = { clip: 'idle', u: 0, since: NOWT, prev: null });
+  let clip = 'idle', u = 0, ex = false;
+  if (A && A.side === side) {
+    if (A.kind === 'move' && A.dur) {
+      const mv = MOVES[A.move] || {}; const cut = A.cut || 0, H = A.H || 0.5;
+      clip = mv.ult ? 'ult' : (mv.p > 0 ? 'attack' : 'special'); ex = true;
+      if (A.t < cut) { clip = mv.ult ? 'special' : 'attack'; u = 0.22 * clamp01(A.t / Math.max(0.01, cut)); }
+      else { const v = clamp01((A.t - cut) / Math.max(0.01, A.dur - cut)), ch = clip === 'ult' ? 0.62 : clip === 'attack' ? 0.45 : 0.5; u = v < H ? ch * v / H : ch + (1 - ch) * (v - H) / Math.max(0.01, 1 - H); }
+    } else if (A.kind === 'sig' || A.kind === 'taunt') { clip = 'special'; u = clamp01(A.t / (A.dur || 1)); }
+    else if (A.kind === 'dodge') { clip = 'dodge'; u = clamp01(A.t / (A.dur || 0.6)); }
+    else if (A.kind === 'dance' || A.kind === 'cheer') { clip = 'victory'; u = (A.t / 1.6) % 1; }
+    else if (A.kind === 'faint') { clip = 'faint'; u = clamp01(A.t / (A.dur || 1) * 1.3); }
+    else if (A.kind === 'lunge') { clip = 'attack'; u = clamp01(A.t / (A.dur || 0.6)); }
+  }
+  const rc = B.react && B.react[side];
+  if (clip === 'idle' && rc) { clip = (rc.pow || 1) > 1.25 || rc.style === 'launch' || rc.style === 'spin' ? 'knock' : 'hit'; u = clamp01(rc.t / 0.7); }
+  if (clip === 'idle' && side === 'p' && B.victory) { clip = 'victory'; u = ((NOWT - (M.vt || (M.vt = NOWT))) / 1.6) % 1; }
+  if (clip === 'idle' && m && m.hp <= 0) { clip = 'faint'; u = 1; }
+  // 交叉淡入：片段切换时，上一片段在 0.18 秒内淡出
+  if (clip !== M.clip) { M.prev = { clip: M.clip, u: M.u, t0: NOWT }; M.clip = clip; M.since = NOWT;
+    // 动画事件：命中帧/咆哮 → 特效
+  }
+  const pe = M.prev && M.prev.clip !== 'idle' ? Math.max(0, 1 - (NOWT - M.prev.t0) / 0.18) : 0;
+  const w = clip === 'idle' ? 0 : Math.min(1, (NOWT - M.since) / 0.12 + (clip === 'faint' || clip === 'knock' || clip === 'hit' ? 1 : 0.35));
+  // 事件
+  const evs = skelEvents(clip); for (const [et, en] of evs) { if (M.u < et && u >= et && M.clip === clip) skelOnEvent(B, side, clip, en); }
+  M.u = u;
+  return { clip, u, w, ex, prev: pe > 0 ? { clip: M.prev.clip, u: M.prev.u, w: pe } : null, fid: clip === 'idle' };
+}
+function skelOnEvent(B, side, clip, name) {
+  if (typeof pSpawn !== 'function' || typeof battlePositions !== 'function') return;
+  const P = battlePositions(B), x = side === 'e' ? P.EX : P.PX, y = side === 'e' ? P.EY : P.PY, sz = side === 'e' ? 380 : 500;
+  if (name === 'hit' && clip === 'ult' || name === 'roar') {
+    // 落地/咆哮：脚下扬起尘土冲击波
+    for (let i = 0; i < 16; i++) { const a = Math.PI * (i / 15); pSpawn({ x: x + Math.cos(a) * sz * 0.2, y: y - 6, vx: Math.cos(a) * rnd(260, 520) * (Math.random() < 0.5 ? 1 : -1), vy: -rnd(30, 160), ay: 120, drag: 2.2, life: 0.7, s: rnd(30, 60), s1: rnd(90, 140), c: name === 'roar' ? 'rgba(255,240,200,0.5)' : 'rgba(210,190,150,0.55)', k: PK.smoke, front: true }); }
+    if (typeof AudioSys !== 'undefined' && AudioSys.sfx) try { AudioSys.sfx(name === 'roar' ? 'confirm' : 'hit'); } catch (e) { }
+  }
+}
+window.addEventListener('load', () => setTimeout(skelPreload, 400));

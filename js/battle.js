@@ -505,7 +505,8 @@ function drawBattle() {
     // 冲刺残影
     if (A && A.kind === 'move' && A.side === side && Math.abs(o.x) > 40) for (let i = 1; i <= 3; i++) drawCreature(ctx, m.sp, X + o.x * (1 - i * 0.22), Y + o.y * (1 - i * 0.22), size * o.scale, { back: !isE, alpha: 0.18 * (4 - i) / 3, flash: 0.6, sx: o.sx, sy: o.sy, rot: o.rot, alive: false });
     const LV = battleLean(B, A, side, m);
-    drawCreature(ctx, m.sp, X + o.x, Y + o.y, size * o.scale, { shiny: m.shiny, back: !isE, alpha: o.alpha, flash: o.flash, breathe: !stopped, phase: isE ? 1 : 0, alive: true, lean: LV.lean, eyesClosed: LV.eyes, excited: LV.ex, fidget: LV.fid, t: stopped ? (B.frozenT || (B.frozenT = NOW)) : (B.frozenT = 0, NOW), sx: o.sx, sy: o.sy, rot: o.rot, flashColor: m.status === 'frz' && !o.flash ? 'rgba(160,230,255,0.45)' : undefined });
+    const SK = typeof skelBattle === 'function' ? skelBattle(B, A, side, m, stopped ? (B.frozenT || NOW) : NOW) : null;
+    drawCreature(ctx, m.sp, X + o.x, Y + o.y, size * o.scale, { skel: SK, shiny: m.shiny, back: !isE, alpha: o.alpha, flash: o.flash, breathe: !stopped, phase: isE ? 1 : 0, alive: true, lean: LV.lean, eyesClosed: LV.eyes, excited: LV.ex, fidget: LV.fid, t: stopped ? (B.frozenT || (B.frozenT = NOW)) : (B.frozenT = 0, NOW), sx: o.sx, sy: o.sy, rot: o.rot, flashColor: m.status === 'frz' && !o.flash ? 'rgba(160,230,255,0.45)' : undefined });
     if (m.status === 'frz' && !o.flash) drawCreature(ctx, m.sp, X + o.x, Y + o.y, size * o.scale, { back: !isE, alpha: 0.45, flash: 1, flashColor: 'rgba(170,235,255,0.6)', sx: o.sx, sy: o.sy });
     drawStatusFx(B, m, X + o.x, Y + o.y, size);
     if (m.shiny && !stopped && Math.random() < 0.25) pSpawn({ x: X + o.x + rnd(-size * 0.35, size * 0.35), y: Y + o.y - rnd(0, size * 0.8), vx: 0, vy: -20, ay: 0, drag: 1, life: 0.6, s: rnd(16, 30), s1: 0, c: '#fff6a0', k: PK.star, front: true });

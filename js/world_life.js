@@ -23,7 +23,7 @@ function drawFollower(TS) {
     const cx = (x + 0.5) * TS, by = (y + 1) * TS - TS * 0.06, sz = TS * 1.05;
     shadowEllipse(ctx, cx, by, TS * 0.32 * (1 - hop / TS), TS * 0.1, 0.4);
     const sq = moving ? 1 + Math.sin(p.prog * Math.PI * 2) * 0.06 : 1;
-    drawCreature(ctx, m.sp, cx, by - hop, sz, { breathe: true, alive: true, back: FOLLOW.dir === 'right', shiny: m.shiny, sx: 1 / sq, sy: sq, excited: moving, phase: 2 });
+    drawCreature(ctx, m.sp, cx, by - hop, sz, { breathe: true, alive: true, back: FOLLOW.dir === 'right', shiny: m.shiny, sx: 1 / sq, sy: sq, excited: moving, phase: 2, walk: moving ? 1 : 0, spd: p.run ? 1.6 : 1.1 });
     FOLLOW.idleT += LAST_DT; if (!moving && FOLLOW.idleT > 9 && !FOLLOW.emo) { FOLLOW.emo = ['♥', '♪', '!', '…', '★'][Math.floor(Math.random() * 5)]; FOLLOW.emoT = 0; FOLLOW.idleT = 0; }
     if (FOLLOW.emo) { FOLLOW.emoT += LAST_DT; const a = Math.min(1, FOLLOW.emoT * 4) * Math.min(1, (2.2 - FOLLOW.emoT) * 3); if (FOLLOW.emoT > 2.2) FOLLOW.emo = null; else { ctx.save(); ctx.globalAlpha = Math.max(0, a); bubble(cx + TS * 0.25, by - sz * 0.95, TS * 0.8, FOLLOW.emo, FOLLOW.emo === '♥' ? '#ff5a8a' : '#5a7aff'); ctx.restore(); } }
   } };
