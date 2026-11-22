@@ -1,9 +1,19 @@
-# 灵兽冒险：翠风之旅 v6（4K 原创收集养成 + 小学数学冲分）
+# 灵兽冒险：翠风之旅 v7（4K 原创收集养成 + 小学数学冲分）
 
 一款完全原创的灵兽收集冒险网页游戏：原生 4K（3840×2160）画布渲染、原创音乐与音效、开放大地图，并把 **1–6 年级数学知识点和竞赛题** 深度融入战斗、捕捉、进化和探索的每一个环节。
 
 **在线游玩：** https://zhangjianlin0316-stack.github.io/monster-adventure-4k/
 （也可直接双击 `index.html` 本地打开，无需服务器）
+
+## v7 新内容：真·骨骼动画（全部 63 只）
+- 每只灵兽都从原画切分成独立部件（头、身体、前后四肢、尾巴/多条尾、翅膀、触手、耳朵、角/道具），装上层级骨骼，四肢、头、尾、翅膀各自转动，可以做出扑击、跃起、甩尾、扇翅这样的大幅动作
+- 6 种骨架模板：四足、双足、鸟类、蛇形/龙、漂浮（水母/鲸）、团子
+- 动作片段：待机（呼吸 + 7 种随机小动作）、走路、普通攻击、招牌动作、奥义、受击、击飞、闪避、胜利、倒下；片段之间交叉淡入，命中帧与伤害数字对齐，咆哮/落地时扬起尘土
+- 战斗、大地图跟随灵兽（迈腿走路）、图鉴/祈愿/选择界面（展示动作）全部接入
+- 部件贴图缓存为图集（assets/rig/*.webp），软件渲染下每只绘制 7 ms，比 v6 的整图变形（8.3 ms）更快
+- 「声音 · 语音 · 画质」面板新增「灵兽骨骼动画」开关，可切回 v6 整体变形
+- 演示视频：[docs/v7_skeletal_demo.mp4](docs/v7_skeletal_demo.mp4)（由 `tests/v7_video.js` 逐帧录制）
+- 工具：`tools/rig/build.py`（按 rigs_*.json 自动切分部件、补全被遮挡区域、打包图集，生成 js/rigs.js）；运行时 `js/skel.js`
 
 ## v6 新内容
 
@@ -140,6 +150,7 @@
 - `node tests/gacha.test.js`：蒙特卡洛验证公开概率与保底
 - `tests/voice_play.js` / `tests/v5_shots.js`：浏览器内语音播放、祈愿、事件、灵瞳截图且无控制台错误
 - `tests/voice_live.js`：不加自动播放豁免、真实点击解锁，模拟老存档「静音」，检测扬声器真实输出；`URL=` 可直接测线上，`SLOW=1` 模拟慢网
+- `tests/skel_overview.js` / `tests/skel_sheet.js` / `tests/v7_shots.js` / `tests/v7_video.js`：63 只骨骼动作总览、战斗各片段截图与演示视频
 - `tests/alive_sheet.js` / `tests/v6_shots.js` / `tests/v6_video.js`：63 只闭眼帧对照图、战斗/地图连续帧与演示视频
 - 语音由 `tools/tts_gen.py`（edge-tts）构建时生成，游戏运行时完全离线；生成后运行 `node tools/shard_voice.js` 拆分片
 - `tests/e2e.js`：Playwright 在 3840×2160 下从 file:// 跑完整流程（需 `npm i playwright-core`）
