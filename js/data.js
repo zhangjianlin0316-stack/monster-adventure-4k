@@ -306,12 +306,12 @@ const STARTERS = ['fox', 'turtle', 'fawn'];
 function xpFor(l) { return Math.floor(0.8 * l * l * l); }
 function xpGain(enemy, trainer) { const L = enemy.lvl; return Math.round((30 + 10 * L + 0.6 * L * L) * (SPECIES[enemy.sp].xp / 60) * (trainer ? 1.5 : 1)); }
 function stats(m) {
-  const b = SPECIES[m.sp].b, L = m.lvl;
+  const b = SPECIES[m.sp].b, L = m.lvl, c = 1 + 0.05 * (m.cons || 0); // 星魂：每阶全能力 +5%
   return {
-    hp: Math.floor(b[0] * 2 * L / 100) + L + 10,
-    atk: Math.floor(b[1] * 2 * L / 100) + 5,
-    def: Math.floor(b[2] * 2 * L / 100) + 5,
-    spd: Math.floor(b[3] * 2 * L / 100) + 5
+    hp: Math.floor((Math.floor(b[0] * 2 * L / 100) + L + 10) * c),
+    atk: Math.floor((Math.floor(b[1] * 2 * L / 100) + 5) * c),
+    def: Math.floor((Math.floor(b[2] * 2 * L / 100) + 5) * c),
+    spd: Math.floor((Math.floor(b[3] * 2 * L / 100) + 5) * c)
   };
 }
 function makeMon(sp, lvl) {

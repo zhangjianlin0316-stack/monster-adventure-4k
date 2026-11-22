@@ -53,11 +53,12 @@ function drawWorldHUD() {
   text(String(G.stars), 90, 145, 30, '#fff', 'left', '900');
   text('连对 ' + G.streak, 200, 145, 24, G.streak >= 3 ? '#7ff0e2' : '#dfe8ff', 'left', '800');
   text(G.grade + '年级' + (G.comp ? '·竞赛' : ''), 340, 145, 20, '#ffe9a0', 'right', '800');
+  { wishState(); const gp = G.gemPop && G.gemPop.t < 1 ? 1 + 0.3 * Math.sin(G.gemPop.t * Math.PI) : 1; if (G.gemPop) G.gemPop.t += LAST_DT; glass(364, 112, 190, 64, 32, true, 'rgba(120,220,255,0.9)'); ctx.save(); ctx.translate(398, 144); ctx.scale(gp, gp); gemIcon(0, 0, 18); ctx.restore(); text(String(G.flags.gems), 424, 145, 28, '#fff', 'left', '900'); text('G 祈愿', 540, 145, 16, '#9fe8ff', 'right', '800'); }
   if (G.doubleExp > 0) { glass(24, 186, 330, 46, 23, true, 'rgba(255,140,80,0.9)'); text('双倍经验：还剩 ' + G.doubleExp + ' 场战斗', 189, 210, 22, '#ffb080', 'center', '900'); }
   const badges = Object.keys(G.flags.badges).length;
   if (badges) { text('徽章 ' + badges + '/7', 24 + 330, 250, 20, '#c8b0ff', 'right', '800', 'middle', true); }
   drawMinimap(1600 - 24 - 300, 124, 300, 210);
-  if (!G.dialog && !G.menu && !G.partyUI && !G.bagUI && !G.choice) drawHint('方向键/WASD 移动　Shift 奔跑　Z 交互　X 菜单　M 地图　Q 错题本　V 静音　F 全屏');
+  if (!G.dialog && !G.menu && !G.partyUI && !G.bagUI && !G.choice) drawHint('方向键/WASD 移动　Shift 奔跑　Z 交互　X 菜单　M 地图　Q 错题本　G 祈愿　P 图鉴　N 语音');
 }
 // ---------- 对话框与选择框 ----------
 function drawDialogBox() {
@@ -92,13 +93,13 @@ function dialogInput(k) {
   if (D.i >= D.lines.length) { G.dialog = null; if (D.after) D.after(); }
 }
 // ---------- 主菜单 ----------
-const MENU_OPTS = ['队伍', '背包', '灵兽图鉴', '世界地图', '错题本与统计', '年级与竞赛', '保存', '读取', '关闭'];
+const MENU_OPTS = ['队伍', '背包', '祈愿', '灵兽图鉴', '世界地图', '错题本与统计', '年级与竞赛', '保存', '读取', '关闭'];
 function drawMenu() {
   beginUI();
-  const n = MENU_OPTS.length, h = 60 + n * 70, sl = clamp((NOW - (G.menu.t0 || 0)) * 6, 0, 1), ox = (1 - sl) * 80;
+  const n = MENU_OPTS.length, h = 60 + n * 64, sl = clamp((NOW - (G.menu.t0 || 0)) * 6, 0, 1), ox = (1 - sl) * 80;
   ctx.globalAlpha = sl;
   glass(1140 + ox, 110, 420, h, 30, true, 'rgba(255,200,90,0.9)');
-  MENU_OPTS.forEach((o, i) => { const y = 160 + i * 70; if (i === G.menu.idx) { selBar(1165 + ox, y - 28, 370, 56); arrow(1190 + ox, y); } text(o, 1230 + ox, y + 1, 32, '#fff', 'left', '700', 'middle', true); });
+  MENU_OPTS.forEach((o, i) => { const y = 160 + i * 64; if (i === G.menu.idx) { selBar(1165 + ox, y - 28, 370, 56); arrow(1190 + ox, y); } text(o, 1230 + ox, y + 1, 32, '#fff', 'left', '700', 'middle', true); });
   ctx.globalAlpha = 1;
 }
 function menuInput(k) {
@@ -111,6 +112,7 @@ function menuInput(k) {
   const o = MENU_OPTS[M.idx];
   if (o === '队伍') G.partyUI = { idx: 0, mode: 'world', sel: null, sub: null };
   if (o === '背包') G.bagUI = { idx: 0, ctx: 'world' };
+  if (o === '祈愿') { G.menu = null; openWish(); return; }
   if (o === '灵兽图鉴') { G.menu = null; G.dexUI = { idx: 0 }; }
   if (o === '世界地图') { G.menu = null; G.mapUI = true; }
   if (o === '错题本与统计') { G.menu = null; G.statsUI = { tab: 0, idx: 0, scroll: 0 }; }

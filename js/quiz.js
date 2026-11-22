@@ -23,7 +23,8 @@ function recordAnswer(q, ok, fast) {
   if (ok) {
     s.ok++; G.totalOK = (G.totalOK || 0) + 1; G.streak++; G.bestStreak = Math.max(G.bestStreak || 0, G.streak);
     gain = (q.comp ? 3 : 1) + (fast ? 1 : 0);
-    if (G.streak % 5 === 0) { gain += 2; G.doubleExp = 3; AudioSys.sfx('combo'); setTimeout(() => toast('连对 ' + G.streak + ' 题！奖励 ★2，接下来 3 场战斗经验翻倍！'), 300); }
+    if (typeof addGems === 'function') addGems(2 + (q.comp ? 2 : 0) + (fast ? 1 : 0), '答对');
+    if (G.streak % 5 === 0) { gain += 2; if (typeof addGems === 'function') addGems(10, '连对'); G.doubleExp = 3; AudioSys.sfx('combo'); setTimeout(() => toast('连对 ' + G.streak + ' 题！奖励 ★2、灵晶 ◆10，接下来 3 场战斗经验翻倍！'), 300); }
     if (G.streak % 10 === 0) G.pendingWheel = true;
     AudioSys.sfx('correct');
   } else {

@@ -11,7 +11,7 @@ const G = {
   dialog: null, choice: null, menu: null, partyUI: null, bagUI: null, shopUI: null, mapUI: false, statsUI: null, gradeUI: null, quiz: null, wheel: null, evo: null,
   toast: null, trans: 0, battle: null, held: [], lastCenter: { x: SPAWN.x, y: SPAWN.y }, volShow: 0, fadeIn: 0, pendingEnc: null, moveCD: 0
 };
-function cleanMon(m) { const o = { sp: m.sp, lvl: m.lvl, xp: m.xp, hp: m.hp, moves: m.moves.map(x => ({ id: x.id, pp: x.pp })), status: null, evoReady: !!m.evoReady }; if (m.shiny) o.shiny = true; return o; }
+function cleanMon(m) { const o = { sp: m.sp, lvl: m.lvl, xp: m.xp, hp: m.hp, moves: m.moves.map(x => ({ id: x.id, pp: x.pp })), status: null, evoReady: !!m.evoReady }; if (m.shiny) o.shiny = true; if (m.cons) o.cons = m.cons; return o; }
 function healAll() { G.party.forEach(healMon); }
 function newGame() {
   genWorld(); CHUNKS.clear(); MINI = null; FOG_DIRTY = true;
@@ -40,7 +40,7 @@ function loadGame() {
   return true;
 }
 // ---------- 输入 ----------
-const KEYMAP = { r: 'replay', R: 'replay', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right', z: 'ok', Z: 'ok', Enter: 'ok', ' ': 'ok', x: 'cancel', X: 'cancel', Escape: 'cancel', Backspace: 'cancel', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', h: 'hint', H: 'hint', m: 'map', M: 'map', q: 'stats', Q: 'stats', p: 'dex', P: 'dex' };
+const KEYMAP = { r: 'replay', R: 'replay', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right', W: 'up', S: 'down', A: 'left', D: 'right', z: 'ok', Z: 'ok', Enter: 'ok', ' ': 'ok', x: 'cancel', X: 'cancel', Escape: 'cancel', Backspace: 'cancel', '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', h: 'hint', H: 'hint', m: 'map', M: 'map', q: 'stats', Q: 'stats', p: 'dex', P: 'dex', g: 'wish', G: 'wish' };
 const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 window.addEventListener('keydown', e => {
   AudioSys.unlock();
@@ -85,6 +85,7 @@ function onPress(k) {
     case 'battle': if (G.choice) return choiceInput(k); return battleInput(k);
   }
   if (G.wheel) return wheelInput(k);
+  if (G.wishUI) return wishInput(k);
   if (G.pickUI) return pickInput(k);
   if (G.choice) return choiceInput(k);
   if (G.dialog) return dialogInput(k);
@@ -100,6 +101,7 @@ function onPress(k) {
   else if (k === 'cancel') { G.menu = { idx: 0, t0: NOW }; AudioSys.sfx('confirm'); }
   else if (k === 'map') G.mapUI = true;
   else if (k === 'dex') G.dexUI = { idx: 0 };
+  else if (k === 'wish') openWish();
   else if (k === 'stats') G.statsUI = { tab: G.wrongBook.length ? 1 : 0, idx: 0 };
 }
 function starterInput(k) {
@@ -139,6 +141,7 @@ function musicFor() {
   if (G.scene === 'title' || G.scene === 'starter' || G.scene === 'grade') return 'title';
   if (G.scene === 'evolve') return 'evolve';
   if (G.tutor) return 'tutor';
+  if (G.wishUI) return 'legend';
   if (G.scene === 'battle' && G.battle) { const B = G.battle, r = SPECIES[B.enemy.sp].rar; return B.victory ? 'victory' : (G.trans > 0.9 ? null : B.trainer ? 'trainer' : (B.legend || r === 'legend') ? 'legend' : (r === 'epic' || r === 'rare' || B.enemy.shiny) ? 'battle_rare' : 'battle'); }
   if (G.quiz && G.quiz.opts.count > 1) return 'quiz';
   return worldSong();
@@ -173,7 +176,7 @@ function interactObj(o) {
   if (o.type === 'merchant') { say('商人：远道而来辛苦啦！用星星换点补给吧～', () => { G.shopUI = { idx: 0 }; }); return; }
   if (o.type === 'chest') {
     startQuiz({ source: 'chest', count: 1, theme: R.theme, title: '数学宝箱', sub: '答对就能打开宝箱！' }, res => {
-      if (res.correct) { const pool = [[['stars', rint(3, 6)], ['ball', 2]], [['stars', 4], ['potion', 2]], [['stars', 5], ['hintcard', 1]], [['stars', 3], ['superball', 1]], [['stars', 6], ['superpotion', 1]]]; const r = pool[rint(0, pool.length - 1)]; give(r); G.flags.objs[o.id] = 1; AudioSys.sfx('chest'); say('宝箱打开了！获得：' + rewardText(r) + '！'); }
+      if (res.correct) { const pool = [[['stars', rint(3, 6)], ['ball', 2]], [['stars', 4], ['potion', 2]], [['stars', 5], ['hintcard', 1]], [['stars', 3], ['superball', 1]], [['stars', 6], ['superpotion', 1]]]; const r = pool[rint(0, pool.length - 1)]; give(r); addGems(10, '宝箱'); G.flags.objs[o.id] = 1; AudioSys.sfx('chest'); say('宝箱打开了！获得：' + rewardText(r) + '、灵晶 ◆10！'); }
       else say('宝箱纹丝不动……看看解析，再试一次吧！');
     }); return;
   }
@@ -294,7 +297,8 @@ function update(dt) {
     if (G.trans === 0 && G.battle && G.battle.mode === 'end') { G.battle = null; G.scene = 'world'; G.partyUI = null; G.bagUI = null; G.held = []; G.fadeIn = 1; pClear(); afterBattleChecks(); }
     return;
   }
-  if (G.scene === 'world') { processPendingLearn(); updateWorld(dt); }
+  if (G.wishUI) updateWish(dt);
+  if (G.scene === 'world') { processPendingLearn(); if (!G.wishUI) updateWorld(dt); }
   else if (G.scene === 'battle' && G.trans <= 0.45 && !G.quiz) updateBattle(dt);
   else if (G.scene === 'evolve') updateEvo(dt);
 }
@@ -315,6 +319,7 @@ function draw() {
       if (G.mapUI) drawMapScreen();
       if (G.statsUI) drawStatsUI();
       if (G.dexUI) drawDexUI();
+      if (G.wishUI) drawWish();
       break;
     case 'battle': drawBattle(); break;
     case 'evolve': drawEvolve(); break;
@@ -362,6 +367,7 @@ window.__game = {
   gauge: (p, e) => { if (G.battle) { G.battle.gauge.p = p; G.battle.gauge.e = e; } },
   battleState: () => G.battle && { mode: G.battle.mode, cur: G.battle.cur && G.battle.cur.type, anim: G.battle.anim && G.battle.anim.move, quiz: !!G.quiz },
   dex: (idx) => { G.dexUI = { idx: idx || 0 }; },
+  openWish: (bi) => { openWish(); if (bi) G.wishUI.bi = bi; }, gems: n => { wishState(); G.flags.gems = n; }, doWish: n => doWish(n), wishUI: () => G.wishUI && { phase: G.wishUI.phase, ri: G.wishUI.ri, n: G.wishUI.res.length, res: G.wishUI.res.map(r => ({ star: r.star, sp: r.sp, out: r.out })) }, forceWish: (stars) => { const U = G.wishUI; const S = wishState(); const r0 = WishCore.roll; let i = 0; WishCore.roll = (S2, B) => { const st = stars[i++] || 3; return st === 5 ? { star: 5, sp: B.up5 || 'dragon', up: !!B.up5 } : st === 4 ? { star: 4, sp: B.four[i % B.four.length] } : { star: 3, sp: 'moth' }; }; try { doWish(stars.length); } finally { WishCore.roll = r0; } },
   pick: () => G.pickUI && { title: G.pickUI.title, n: G.pickUI.items.length, idx: G.pickUI.idx },
   ridAt, scene: () => G.scene
 };
