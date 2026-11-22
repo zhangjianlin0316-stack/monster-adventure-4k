@@ -16,6 +16,7 @@ function glowSprite(c) {
 const SOFT_CACHE = {};
 function softSprite(c) {
   let g = SOFT_CACHE[c]; if (g) return g;
+  if (/^rgb/.test(c)) { const m = c.match(/[\d.]+/g) || [255, 255, 255]; const hx = '#' + [0, 1, 2].map(i => (+m[i] | 0).toString(16).padStart(2, '0')).join(''); return (SOFT_CACHE[c] = softSprite(hx)); } // rgba() 颜色也转成十六进制，避免黑色烟雾
   g = document.createElement('canvas'); g.width = g.height = 128; const x = g.getContext('2d');
   const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, hexA(c, 0.9)); gr.addColorStop(0.6, hexA(c, 0.45)); gr.addColorStop(1, hexA(c, 0));
   x.fillStyle = gr; x.fillRect(0, 0, 128, 128); SOFT_CACHE[c] = g; return g;

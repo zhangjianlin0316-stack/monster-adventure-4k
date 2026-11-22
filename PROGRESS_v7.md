@@ -12,9 +12,13 @@
 ## 里程碑
 - [x] R1 运行时 + 四足（fox/fawn/cat 线）
 - [x] R2 其余四足/双足/鸟/蛇形/漂浮 全部 63 只（tools/rig/rigs_*.json；类型 quad/biped/bird/serpent/float/blob）
-- [ ] R3 战斗/大地图/图鉴接入片段（出招、招牌、奥义、受击、闪避、胜利、倒下、跟随行走）+ 事件同步
+- [x] R3 战斗/大地图/图鉴接入片段（出招、招牌、奥义、受击、闪避、胜利、倒下、跟随行走）+ 事件同步
 - [ ] R4 测试、演示视频 docs/v7_skeletal_demo.mp4、Pages
 
 ## 记录
 - 已绑定：全部 63 只（tests/skel_overview.js → /tmp/skelov/ov_*.jpg 总览）
 - R3 进行中：战斗 skelBattle（出招/奥义/招牌/受击/击飞/闪避/胜利/倒下 + 交叉淡入 + 命中/咆哮事件特效）、跟随灵兽走路、图鉴/祈愿/选择界面展示模式已接入
+
+- R3 完成：修复 softSprite 不认 rgba() 颜色导致烟雾变黑块（闪避/招牌时盖住灵兽）；设置面板新增「灵兽骨骼动画」开关（localStorage ls_skel）；tests/v7_shots.js 战斗截图 94 张无控制台错误；节点测试 mathq/explain/voice/gacha/world 全部通过（数学 0 失败）
+- 性能：软件渲染下骨骼绘制 7.0 ms/只，旧版变形 8.3 ms/只（骨骼更快）
+- R4 进行中：回归 e2e/smoke/cinema/v6/v5/voice_play → 演示视频 → Pages
