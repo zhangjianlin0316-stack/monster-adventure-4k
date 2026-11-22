@@ -92,6 +92,10 @@ function drawCreature(c, sp, x, y, size, opt) {
   c.scale(opt.back ? -sx : sx, sy);
   const pw = Math.max(1, Math.round(w * dev * Math.abs(sx))), ph = Math.max(1, Math.round(h * dev * sy));
   const src = (pw < im.width * 0.7) ? scaled(sp, pw, ph) : im;
+  // v7：真正的骨骼动画（js/skel.js）；小图标与未就绪时回退到 v6 网格变形
+  if (opt.alive !== false && opt.t !== 0 && pw >= 120 && typeof skelReady === 'function' && skelReady(sp)) {
+    skelCreature(c, sp, w, h, pw, ph, t, opt, _seed(sp) + (opt.phase || 0) * 0.37); c.restore(); return;
+  }
   // v6：活体变形（呼吸/摆动/尾巴翅膀/眨眼/小动作），见 js/alive.js
   let fr = null;
   if (opt.alive !== false && typeof aliveFrame === 'function' && opt.t !== 0) fr = aliveFrame(sp, src, pw, ph, t, opt);
