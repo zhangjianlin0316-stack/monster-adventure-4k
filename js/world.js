@@ -322,6 +322,9 @@ function placeObjects(rng) {
   [['forest', 'qilin', 36, '雷鸣古神社'], ['lake', 'whale', 38, '云海星祠'], ['volcano', 'zhulong', 42, '烛火神殿']].forEach(([rid, sp, lv, name]) => { const p = openSpot(rid, rng, 10, reach); if (p) add({ type: 'shrine', id: 'shrine_' + sp, x: p[0], y: p[1], region: rid, sp, lv, name }); });
   // 地标：火山之巅的金星奖杯
   const vt = townOf('volcano'); add({ type: 'trophy', id: 'trophy', x: vt.x + 5, y: vt.y + 2, region: 'volcano' });
+  // v5：灵瞳（每个地区 2 个，数学谜题守护；用独立随机数，不影响其他物体的位置）
+  let os = 20260521; const orng = () => ((os = (os * 1664525 + 1013904223) >>> 0) / 4294967296);
+  REGIONS.forEach(R => { for (let i = 0; i < 2; i++) { const p = openSpot(R.id, orng, 6, reach); if (p) add({ type: 'oculus', id: 'eye_' + R.id + i, x: p[0], y: p[1], region: R.id }); } });
   // 物体所在格设为可通行地面
   OBJS.forEach(o => { if (MAP[o.y][o.x] !== T.FLOWER) MAP[o.y][o.x] = T.GROUND; });
   // 移除会被其他物体挡住、无法到达的可选物体
@@ -329,7 +332,7 @@ function placeObjects(rng) {
     const occ = new Set(OBJS.map(o => o.x + ',' + o.y));
     const S = bfs(SPAWN.x, SPAWN.y, (t, x, y) => PASSABLE.has(t) && !occ.has(x + ',' + y));
     const adj = o => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => S[(o.y + dy) * W + o.x + dx]);
-    const before = OBJS.length; OBJS = OBJS.filter(o => adj(o) || !['chest', 'stele', 'trainer', 'npc', 'merchant'].includes(o.type) || o.id === 'prof');
+    const before = OBJS.length; OBJS = OBJS.filter(o => adj(o) || !['chest', 'stele', 'trainer', 'npc', 'merchant', 'oculus'].includes(o.type) || o.id === 'prof');
     if (OBJS.length === before) break;
   }
 }

@@ -11,7 +11,7 @@ function startQuiz(opts, cb) {
 function quizNextQ() {
   const Z = G.quiz;
   G.recentBank = G.recentBank || [];
-  const q = MathQ.next({ grade: G.grade, comp: G.comp, stats: G.mstats, theme: Z.opts.theme, forceComp: Z.opts.forceComp, recentBank: G.recentBank, kp: Z.opts.kp });
+  const q = Z.opts.custom && Z.i === 0 ? Z.opts.custom : MathQ.next({ grade: G.grade, comp: G.comp, stats: G.mstats, theme: Z.opts.theme, forceComp: Z.opts.forceComp, recentBank: G.recentBank, kp: Z.opts.kp });
   if (q.bank) { G.recentBank.push(q.bank); if (G.recentBank.length > 40) G.recentBank.shift(); }
   Z.q = q; Z.phase = 'ask'; Z.t = 0; Z.elapsed = 0; Z.sel = 0; Z.removed = new Set(); Z.limit = MathQ.timeLimit(q); Z.chosen = -1;
   AudioSys.sfx(q.comp ? 'gold' : 'select');

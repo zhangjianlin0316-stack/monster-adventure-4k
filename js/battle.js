@@ -109,7 +109,7 @@ function battleTurn(mi) {
   else Q(act('e', em), act('p', pm, mi, res));
   Q(fn(endOfTurn), fn(endTurn));
 }
-function endTurn() { const B = G.battle; if (B && !B.over) B.mode = 'menu'; }
+function endTurn() { const B = G.battle; if (B && !B.over) { if (maybeBattleEvent(B)) return; B.mode = 'menu'; } }
 function mathMult(res, ult) {
   if (!res) return { m: 1, crit: 0, text: null };
   if (ult) {
@@ -173,6 +173,8 @@ function act(side, moveId, mi, res) {
       const crit = side === 'p' ? Math.random() < Math.max(1 / 16, mm.crit) : Math.random() < 1 / 16;
       let dmg = ((2 * att.lvl / 5 + 2) * mv.p * A / D) / 50 + 2;
       dmg = Math.max(1, Math.floor(dmg * stab * eff * (crit ? 1.5 : 1) * mm.m * weak * guard * rnd(0.85, 1)));
+      const wxm = weatherMul(B, mv.t), luck = side === 'p' && B.luckyMul ? B.luckyMul : 1; if (luck !== 1) { B.luckyMul = null; steps.push(fn(() => addStamp(B, '幸运 ×' + luck + '！', '#ffcc4a'))); } dmg = Math.max(1, Math.floor(dmg * wxm * luck));
+      const rx = elemReaction(B, os, mv.t, side === 'p' && res && (res.correct || res.ok)); if (rx) dmg = Math.max(1, Math.floor(dmg * rx.m));
       // 连击：答对后普通招式化作多段连击（分段伤害），带 hits 的招式固定多段
       const ftype = FXDEF[mv.fx.k].type;
       let hits = mv.hits || 1;
@@ -180,13 +182,14 @@ function act(side, moveId, mi, res) {
       hits = Math.max(1, Math.min(hits, dmg));
       const parts = []; let left = dmg; for (let i = 0; i < hits; i++) { const pp2 = i === hits - 1 ? left : Math.max(1, Math.round(dmg / hits * rnd(0.8, 1.2))); parts.push(Math.min(left - (hits - 1 - i), pp2)); left -= parts[i]; }
       const an2 = mk({ eff, dmg, crit, hits, parts, ko: dmg >= def.hp }); an2.dur += 0.13 * (hits - 1);
-      an2.onHit = (amt) => { def.hp = Math.max(G.noKO ? 1 : 0, def.hp - (amt === undefined ? dmg : amt)); };
+      an2.onHit = (amt) => { if (rx && !an2.rxShown) { an2.rxShown = 1; addStamp(B, rx.n + '！', rx.c, true); const P0 = battlePositions(B), tx = os === 'e' ? P0.EX : P0.PX, ty = (os === 'e' ? P0.EY : P0.PY) - 200; burst(tx, ty, 50, { c: [rx.c, TYPES[rx.from === 'rock' ? 'rock' : rx.from].c, TYPES[mv.t].c], k: 'star', g: 80, sp1: 900, front: true }); addRing(B, tx, ty + 150, 380, rx.c, 0.7); B.shake = Math.max(B.shake, 30); AudioSys.sfx('gauge'); } def.hp = Math.max(G.noKO ? 1 : 0, def.hp - (amt === undefined ? dmg : amt)); };
       if (mv.fx.w) setTimeout(() => { if (G.battle === B) setWeather(B, mv.fx.w, tm.dur + 1.2); }, tm.cut * 1000);
       steps.push(an2, waitHp(), fn(() => {
-        if (crit) monTalk(side, 'crit', { force: true });
+        if (crit) { monTalk(side, 'crit', { force: true }); if (Math.random() < 0.6) QF({ type: 'anim', kind: 'taunt', side, mtype: 'normal', dur: 0.8 }); }
         else if (def.hp > 0 && def.hp < stats(def).hp * 0.28 && !(B.lowSaid = B.lowSaid || new Set()).has(def)) { B.lowSaid.add(def); monTalk(os, 'low', { force: true }); }
         else if (def.hp > 0) monTalk(os, 'hit', { chance: 0.4 });
       }));
+      if (rx) { steps.push(msg('元素反应「' + rx.n + '」：' + rx.d)); steps.push(fn(() => { if (rx.st && def.hp > 0) QF(...applyStatus(def, rx.st[0], rx.st[1], dn)); if (rx.def) { const st = B.stages[os]; st.def = Math.max(-6, st.def + rx.def); } if (rx.self) { const st = B.stages[side]; st.def = Math.min(6, st.def + 1); } if (rx.heal) { const mx = stats(att).hp, h = Math.min(mx - att.hp, Math.round(mx * rx.heal)); if (h > 0) { att.hp += h; QF(anim('heal', side, 'grass', 0.5), waitHp()); } } })); }
       if (crit) steps.push(msg('击中了要害！'));
       if (eff > 1) steps.push(msg('效果拔群！'));
       if (eff < 1) steps.push(msg('效果不太理想……'));
@@ -209,6 +212,7 @@ function applyStatus(mon, st, chance, name) {
 }
 function endOfTurn() {
   const B = G.battle; if (!B || B.over) return;
+  tickAuras(B); tickWeather(B);
   const steps = [];
   [['p', active()], ['e', B.enemy]].forEach(([side, m]) => {
     if (m && m.hp > 0 && m.status === 'burn') {
@@ -480,6 +484,7 @@ function drawBattle() {
     o.x += r.dir * 70 * r.pow * Math.sin(Math.min(1, k * 3) * Math.PI / 2) * (1 - k) + Math.sin(r.t * 80) * 12 * (1 - k);
     o.flash = Math.max(o.flash, k < 0.4 ? (Math.floor(r.t * 30) % 2 ? 0.9 : 0.25) : 0);
     o.sx *= 1 + 0.12 * (1 - k) * Math.sin(r.t * 40); o.sy *= 1 - 0.1 * (1 - k);
+    hitStyle(r, o, k);
   });
   if (A && A.kind === 'move' && MOVES[A.move].ult && A.t > A.cut) drawUltBackdrop(B, A, (A.t - A.cut) / (A.dur - A.cut));
   const padGlow = (x, y, rx, c) => { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(x, y); ctx.scale(1, 0.28); ctx.globalAlpha = 0.5 + 0.2 * Math.sin(NOW * 2); ctx.drawImage(softSprite(c), -rx, -rx, rx * 2, rx * 2); ctx.restore(); };
@@ -594,7 +599,7 @@ function drawBattle() {
     text(B.asked ? '本场 ' + B.correct + '/' + B.asked : (B.trainer ? '数学对决' : '野生战斗'), 1540 + (1 - ue) * 400, 76, 22, '#aab8dd', 'right', '700');
     ctx.globalAlpha = 1;
   }
-  drawBubblesUI(B);
+  drawBubblesUI(B); drawAuraBadges(B); drawBattleEventUI(B);
   if (B.lvPanel) drawLvPanel(B.lvPanel);
   // 底部面板
   const py = 724 + (1 - ue) * 220;

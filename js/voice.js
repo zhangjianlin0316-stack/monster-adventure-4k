@@ -99,6 +99,7 @@ const Voice = (() => {
     if (enabled && !AudioSys.muted) VoicePack.load('mons').then(() => { const k = sp + ':' + kind + ':' + i; if (VoicePack.has('mons', k)) playSeq([{ pack: 'mons', k }], Object.assign({ tag: 'mon', reverb: pv.reverb, detune: pv.detune }, opts || {})); });
     return text;
   }
+  function npc(k, opts) { if (!enabled || AudioSys.muted) return; VoicePack.load('npc').then(() => { if (VoicePack.has('npc', k)) playSeq([{ pack: 'npc', k }], Object.assign({ tag: 'npc' }, opts || {})); }); }
   const busy = () => !!cur && performance.now() < cur.end;
-  return { playSeq, tutor, tutorLine, tutorItems, mon, stop, setEnabled, setVol, busy, stats, get enabled() { return enabled; }, get vol() { return vol; }, get curTag() { return cur && busy() ? cur.tag : null; } };
+  return { npc, playSeq, tutor, tutorLine, tutorItems, mon, stop, setEnabled, setVol, busy, stats, get enabled() { return enabled; }, get vol() { return vol; }, get curTag() { return cur && busy() ? cur.tag : null; } };
 })();

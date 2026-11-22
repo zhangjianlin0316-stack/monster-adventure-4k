@@ -1,0 +1,13 @@
+[
+ {"id":"riddle_in","text":"哈哈，好热闹的战斗！小朋友，先来解我一道谜题吧！","voice":"zh-CN-YunyangNeural","pitch":"-6Hz","rate":"-4%"},
+ {"id":"riddle_ok","text":"妙哉妙哉！送你一点灵力！","voice":"zh-CN-YunyangNeural","pitch":"-6Hz","rate":"-4%"},
+ {"id":"riddle_ng","text":"别灰心，回去好好想想刚才的讲解！","voice":"zh-CN-YunyangNeural","pitch":"-6Hz","rate":"-4%"},
+ {"id":"ev_weather","text":"天气突变！","voice":"zh-CN-XiaoyiNeural","pitch":"+0Hz","rate":"+4%"},
+ {"id":"ev_banter","text":"灵兽斗嘴啦！","voice":"zh-CN-XiaoyiNeural","pitch":"+0Hz","rate":"+4%"},
+ {"id":"ev_roulette","text":"幸运转盘出现！答对题目，下一招伤害翻倍！","voice":"zh-CN-XiaoyiNeural","pitch":"+0Hz","rate":"+4%"},
+ {"id":"ev_dance","text":"斗舞大会，开始！","voice":"zh-CN-XiaoyiNeural","pitch":"+0Hz","rate":"+4%"},
+ {"id":"ev_stars","text":"哇，流星雨！快数一数！","voice":"zh-CN-XiaoyiNeural","pitch":"+0Hz","rate":"+4%"},
+ {"id":"wish_gold","text":"金色流星！","voice":"zh-CN-XiaoyiNeural","pitch":"+0Hz","rate":"+0%"},
+ {"id":"daily_ok","text":"每日挑战成功！明天也要来哦！","voice":"zh-CN-XiaoxiaoNeural","pitch":"+0Hz","rate":"-4%"},
+ {"id":"oculus","text":"收集到灵瞳啦！","voice":"zh-CN-XiaoyiNeural","pitch":"+0Hz","rate":"+0%"}
+]

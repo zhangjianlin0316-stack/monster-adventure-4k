@@ -121,7 +121,7 @@ function starterInput(k) {
   if (k === 'cancel') { G.gradeUI = { grade: G.grade, comp: G.comp, row: 0, setup: true }; }
 }
 // ---------- 大地图逻辑 ----------
-function objAt(x, y) { return OBJS.find(o => o.x === x && o.y === y && !((o.type === 'chest' || o.type === 'gold') && G.flags.objs[o.id])); }
+function objAt(x, y) { return OBJS.find(o => o.x === x && o.y === y && !((o.type === 'chest' || o.type === 'gold' || o.type === 'oculus') && G.flags.objs[o.id])); }
 function gateAt(x, y) { return GATES.find(g => !G.flags.gates[g.id] && g.tiles.some(([a, b]) => a === x && b === y)); }
 function walkable(x, y) {
   if (!inMap(x, y)) return false;
@@ -187,6 +187,14 @@ function interactObj(o) {
     })); return;
   }
   if (o.type === 'movetutor') { interactMoveTutor(o); return; }
+  if (o.type === 'oculus') {
+    const R0 = REGIONS[RIDX[o.region]];
+    say(['一颗闪着' + R0.n + '光芒的「灵瞳」漂浮在空中……', '灵瞳被数学谜题守护着：连续答对 2 题就能收集它！'], () => startQuiz({ source: 'oculus', count: 2, need: 2, theme: R0.theme, title: '灵瞳谜题', sub: '连续答对 2 题，收集灵瞳（◆40 灵晶）' }, res => {
+      if (res.pass) { G.flags.objs[o.id] = 1; G.flags.oculi = (G.flags.oculi || 0) + 1; addGems(40, '灵瞳'); AudioSys.sfx('levelup'); Voice.npc('oculus'); const n = G.flags.oculi, tot = OBJS.filter(x => x.type === 'oculus').length; const bonus = n % 5 === 0; if (bonus) G.flags.tickets = (G.flags.tickets || 0) + 1; say('收集到了灵瞳！（' + n + '/' + tot + '）获得灵晶 ◆40' + (bonus ? '，每集齐 5 颗还送祈愿券 ×1！' : '！')); }
+      else say('灵瞳闪了闪，又飘远了一点……再仔细想想，回来挑战吧！');
+    }));
+    return;
+  }
   if (o.type === 'shrine') {
     const S = SPECIES[o.sp];
     if (done) { say(o.name + '静悄悄的，传说中的' + S.n + '已经离开了这里。'); return; }
@@ -283,7 +291,7 @@ function updateWorld(dt) {
 let lastTS = performance.now(), tintedDone = false;
 function update(dt) {
   if (G.freeze && G.battle && G.battle.anim && G.battle.anim.kind === 'move' && G.battle.anim.side === G.freeze.side) { const a = G.battle.anim; if (a.t >= (G.freeze.cut ? a.cut * G.freeze.frac : a.cut + (a.dur - a.cut) * G.freeze.frac)) { G.timeScale = 0; G.freeze = null; } }
-  if (G.scene === 'loading' && assetsReady()) { makeTinted(); G.scene = 'title'; G.fadeIn = 1; setTimeout(() => { VoicePack.load('tutor'); VoicePack.load('mons'); }, 2500); }
+  if (G.scene === 'loading' && assetsReady()) { makeTinted(); G.scene = 'title'; G.fadeIn = 1; setTimeout(() => { VoicePack.load('tutor'); VoicePack.load('mons'); VoicePack.load('npc'); }, 2500); }
   if (G.volShow > 0) G.volShow -= dt;
   if (G.fadeIn > 0) G.fadeIn = Math.max(0, G.fadeIn - dt * 1.6);
   if (AudioSys.started) { const mu = musicFor(); if (mu && AudioSys.current !== mu) AudioSys.play(mu); }
@@ -367,6 +375,7 @@ window.__game = {
   gauge: (p, e) => { if (G.battle) { G.battle.gauge.p = p; G.battle.gauge.e = e; } },
   battleState: () => G.battle && { mode: G.battle.mode, cur: G.battle.cur && G.battle.cur.type, anim: G.battle.anim && G.battle.anim.move, quiz: !!G.quiz },
   dex: (idx) => { G.dexUI = { idx: idx || 0 }; },
+  event: id => { const B = G.battle; if (!B) return false; B.queue = []; B.cur = null; B.anim = null; B.evN = 0; B.turnNo = 5; return maybeBattleEvent(B, id); },
   openWish: (bi) => { openWish(); if (bi) G.wishUI.bi = bi; }, gems: n => { wishState(); G.flags.gems = n; }, doWish: n => doWish(n), wishUI: () => G.wishUI && { phase: G.wishUI.phase, ri: G.wishUI.ri, n: G.wishUI.res.length, res: G.wishUI.res.map(r => ({ star: r.star, sp: r.sp, out: r.out })) }, forceWish: (stars) => { const U = G.wishUI; const S = wishState(); const r0 = WishCore.roll; let i = 0; WishCore.roll = (S2, B) => { const st = stars[i++] || 3; return st === 5 ? { star: 5, sp: B.up5 || 'dragon', up: !!B.up5 } : st === 4 ? { star: 4, sp: B.four[i % B.four.length] } : { star: 3, sp: 'moth' }; }; try { doWish(stars.length); } finally { WishCore.roll = r0; } },
   pick: () => G.pickUI && { title: G.pickUI.title, n: G.pickUI.items.length, idx: G.pickUI.idx },
   ridAt, scene: () => G.scene

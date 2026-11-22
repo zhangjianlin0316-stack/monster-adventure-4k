@@ -215,6 +215,21 @@ function drawObj(o, TS) {
     if (!objDone(o)) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.4 + 0.3 * Math.sin(NOW * 2.5 + o.y); ctx.drawImage(glowSprite('#b9a4ff'), cx - TS * 0.6, by - h * 0.9, TS * 1.2, TS * 1.2); ctx.restore(); }
     return;
   }
+  if (o.type === 'oculus') {
+    if (objDone(o)) return;
+    const col = { meadow: '#7ff0b0', flower: '#ff9ad0', lake: '#7fd8ff', forest: '#b8ff7a', desert: '#ffc06a', snow: '#c8f4ff', volcano: '#ff7a4a' }[o.region] || '#9fe8ff';
+    const bob = Math.sin(NOW * 2.2 + o.x) * TS * 0.08, y0 = by - TS * 0.85 + bob, r = TS * 0.36;
+    shadowEllipse(ctx, cx, by, TS * 0.22, TS * 0.07, 0.3);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.65 + 0.25 * Math.sin(NOW * 3 + o.y); ctx.drawImage(glowSprite(col), cx - TS * 1.2, y0 - TS * 1.2, TS * 2.4, TS * 2.4); ctx.restore();
+    ctx.save(); ctx.translate(cx, y0); ctx.rotate(Math.sin(NOW * 1.5 + o.x) * 0.15);
+    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, col); g.addColorStop(1, hexA(col, 0.6));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, -r * 1.3); ctx.quadraticCurveTo(r * 1.1, 0, 0, r * 1.3); ctx.quadraticCurveTo(-r * 1.1, 0, 0, -r * 1.3); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = TS * 0.03; ctx.stroke();
+    ctx.fillStyle = 'rgba(20,30,60,0.75)'; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.42, r * 0.28, 0, 0, 6.28); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(r * 0.08, -r * 0.06, r * 0.1, 0, 6.28); ctx.fill();
+    ctx.restore();
+    if (hash(Math.floor(NOW * 4), o.x) > 0.75) text('✦', cx + rnd(-TS * 0.4, TS * 0.4), y0 + rnd(-TS * 0.4, TS * 0.3), TS * 0.2, '#ffffff', 'center', '900');
+    return;
+  }
   if (o.type === 'shrine') {
     // 朱红鸟居 + 漂浮的传说灵兽剪影
     const w = TS * 1.6, h = TS * 1.5, col = '#d8302a';

@@ -18,7 +18,7 @@ function monTalk(side, kind, opts) {
   B.bubbles = (B.bubbles || []).filter(b => b.side !== side);
   B.bubbles.push({ side, text, t: 0, dur: Math.max(1.8, text.length * 0.2 + 1), kind });
 }
-function updateBubbles(B, dt) { if (!B.bubbles) return; for (const b of B.bubbles) b.t += dt; B.bubbles = B.bubbles.filter(b => b.t < b.dur); }
+function updateBubbles(B, dt) { if (B.wx && !B.weather) setWeather(B, B.wx.kind, 9999); if (!B.bubbles) return; for (const b of B.bubbles) b.t += dt; B.bubbles = B.bubbles.filter(b => b.t < b.dur); }
 // 世界空间里记下气泡锚点（灵兽头顶），UI 层再画，避免被血条面板挡住
 function drawBubbles(B, P) {
   const T = ctx.getTransform(); B._anchor = {
@@ -94,7 +94,17 @@ function lifePose(A, o, at, dirx, B, P) {
   if (Math.random() < 0.55) pSpawn({ x: X + o.x + rnd(-size * 0.4, size * 0.4), y: Y + o.y - rnd(0, size * 0.85), vx: rnd(-90, 90), vy: -rnd(60, 220), ay: act.pt === 'snow' || act.pt === 'sakura' || act.pt === 'leaf' || act.pt === 'feather' ? 80 : -30, drag: 1, life: rnd(0.6, 1.1), s: rnd(18, 36), s1: 4, c: ps[0], k: ps[1], front: true });
 }
 // 待机小动作：每隔几秒随机做一下自己的招牌动作缩略版
+// 受击反应多样化：踉跄 / 被打飞 / 旋转 / 压扁
+function hitStyle(r, o, k) {
+  if (!r.style) { const p = r.pow || 1; r.style = p > 1.4 ? (Math.random() < 0.5 ? 'launch' : 'spin') : ['stagger', 'squash', 'stagger', 'spin'][rint(0, 3)]; }
+  const u = 1 - k;
+  if (r.style === 'launch') { o.y -= Math.sin(Math.min(1, k * 1.6) * Math.PI) * 90 * (r.pow || 1); o.rot += r.dir * 0.25 * u; }
+  else if (r.style === 'spin') o.rot += Math.sin(r.t * 28) * 0.28 * u;
+  else if (r.style === 'squash') { o.sy *= 1 - 0.22 * u * Math.abs(Math.sin(r.t * 20)); o.sx *= 1 + 0.12 * u; }
+  else o.rot += r.dir * 0.18 * Math.sin(Math.min(1, k * 2) * Math.PI);
+}
 function lifeIdle(B, side, o, dt) {
+  { const m0 = side === 'p' ? active() : B.enemy; if (m0 && m0.hp > 0 && m0.hp < stats(m0).hp * 0.25) { o.sy *= 1 + 0.035 * Math.sin(NOW * 9); o.y += 6; if (Math.random() < 0.04) { const P = battlePositions(B); pSpawn({ x: (side === 'p' ? P.PX : P.EX) + rnd(-60, 60), y: (side === 'p' ? P.PY - 380 : P.EY - 300), vx: rnd(-40, 40), vy: -60, ay: 300, life: 0.7, s: 16, s1: 6, c: '#9fe3ff', k: PK.drop, front: true }); } } }
   B.idle = B.idle || { p: { t: 0, next: 5 + Math.random() * 4 }, e: { t: 0, next: 3 + Math.random() * 4 } };
   const I = B.idle[side]; I.t += dt;
   if (I.t > I.next) { I.play = (I.play || 0) + dt; const u = I.play / 0.9; if (u >= 1) { I.t = 0; I.play = 0; I.next = 6 + Math.random() * 6; return; }
@@ -135,4 +145,34 @@ function drawSay() {
   rrect(-w / 2, -38, w, 76, 38, 'rgba(255,253,245,0.97)', '#ffcf5a', 5);
   text('🗨', -w / 2 + 40, 1, 30, '#ffb84a', 'center', '900'); text(S.text, 20, 1, 32, '#24304f', 'center', '900');
   ctx.restore();
+}
+// ================== 元素反应（原创命名）：目标身上有「元素附着」时，被另一种元素命中触发反应 ==================
+const ELEM_NAME = { fire: '火', water: '水', grass: '草', electric: '雷', ice: '冰', rock: '岩' };
+const REACTIONS = [
+  { a: 'fire', b: 'water', n: '蒸汽爆', m: 1.5, c: '#bfe8ff', d: '火与水相遇化作蒸汽爆炸！伤害 ×1.5' },
+  { a: 'fire', b: 'ice', n: '融冰', m: 1.5, c: '#ffd0a0', d: '火焰融化寒冰！伤害 ×1.5' },
+  { a: 'water', b: 'electric', n: '雷涌', m: 1.3, c: '#a8b8ff', d: '水导电，雷流涌动！伤害 ×1.3，可能麻痹', st: ['para', 40] },
+  { a: 'fire', b: 'electric', n: '爆燃', m: 1.4, c: '#ff9a6a', d: '火与雷引发爆燃！伤害 ×1.4' },
+  { a: 'ice', b: 'electric', n: '霜雷', m: 1.2, c: '#c8c8ff', d: '霜与雷削弱了防御！伤害 ×1.2，防御下降', def: -1 },
+  { a: 'water', b: 'ice', n: '冰封', m: 1.2, c: '#c8f4ff', d: '水被冻成坚冰！伤害 ×1.2，可能冻结', st: ['frz', 35] },
+  { a: 'grass', b: 'fire', n: '野火', m: 1.3, c: '#ffb070', d: '草木燃起野火！伤害 ×1.3，可能灼伤', st: ['burn', 50] },
+  { a: 'grass', b: 'electric', n: '雷藤', m: 1.3, c: '#d8ff7a', d: '雷电顺着藤蔓蔓延！伤害 ×1.3' },
+  { a: 'grass', b: 'water', n: '繁花', m: 1.2, c: '#ffb6e0', d: '水润草木，繁花盛开！伤害 ×1.2，攻击者回复体力', heal: 0.12 },
+];
+function findReaction(x, y) { if (!x || !y || x === y) return null; if (x === 'rock' || y === 'rock') return { n: '晶盾', m: 1.1, c: '#ffe08a', d: '岩元素凝成晶盾！伤害 ×1.1，攻击者防御提升', self: 1 }; return REACTIONS.find(r => (r.a === x && r.b === y) || (r.a === y && r.b === x)) || null; }
+// 返回反应信息（并更新附着）；mathBonus：答对题目时反应倍率额外 +0.1
+function elemReaction(B, defSide, el, mathOk) {
+  B.aura = B.aura || { p: null, e: null };
+  if (!ELEM_NAME[el]) return null; const cur = B.aura[defSide];
+  const rx = cur ? findReaction(cur.el, el) : null;
+  if (rx) { B.aura[defSide] = null; const r = Object.assign({}, rx, { m: rx.m + (mathOk ? 0.1 : 0), from: cur.el, to: el }); B.reactions = (B.reactions || 0) + 1; return r; }
+  B.aura[defSide] = { el, turns: 2 }; return null;
+}
+function tickAuras(B) { if (!B.aura) return; for (const s of ['p', 'e']) if (B.aura[s] && --B.aura[s].turns <= 0) B.aura[s] = null; }
+function drawAuraBadges(B) {
+  if (!B.aura) return;
+  for (const s of ['p', 'e']) { const a = B.aura[s]; if (!a) continue; if (s === 'e' && !B.showE) continue; if (s === 'p' && !B.showP) continue;
+    const x = s === 'e' ? 620 : 1000, y = s === 'e' ? 214 : 500, c = TYPES[a.el].c, pulse = 1 + 0.08 * Math.sin(NOW * 5);
+    ctx.save(); ctx.translate(x, y); ctx.scale(pulse, pulse); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.5; ctx.drawImage(glowSprite(c), -40, -40, 80, 80); ctx.restore();
+    rrect(x - 60, y - 18, 120, 36, 18, 'rgba(10,14,40,0.75)', c, 3); text(ELEM_NAME[a.el] + '元素附着', x, y + 1, 18, '#fff', 'center', '900'); }
 }

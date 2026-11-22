@@ -61,6 +61,42 @@ const SECT = (process.env.SECT || 'talk,dex').split(',');
     ok(await page.evaluate(() => G.wishUI.phase === 'banner' && G.flags.gems === 5), '灵晶不足时无法祈愿');
     await page.evaluate(() => { G.wishUI = null; }); await W(300); await S('v5_world_hud_gems');
   }
+  if (SECT.includes('events')) {
+    await page.evaluate(() => { G.party[0].hp = G.party[0].hp; __game.setParty('lizard3', 30); G.noKO = true; __game.wild('turtle2', 28); });
+    await until(() => G.battle && G.battle.mode === 'menu', null, 300);
+    // 元素反应：水附着 + 火招
+    const fm = await page.evaluate(() => Object.keys(MOVES).find(k => MOVES[k].t === 'fire' && MOVES[k].p > 0 && !MOVES[k].ult && !MOVES[k].fx.sig && FXDEF[MOVES[k].fx.k].type === 'proj'));
+    await page.evaluate(m => { const B = G.battle; B.aura = { p: null, e: { el: 'water', turns: 2 } }; B.queue = []; B.cur = null; B.anim = null; B.mode = 'queue'; Q(act('p', m, 0, null)); }, fm);
+    await W(300); await S('v5_elem_aura_badge');
+    await until(() => !!(G.battle.stamps || []).find(s => /蒸汽爆/.test(s.text)), null, 200); await W(150); await S('v5_elem_reaction_steam');
+    ok(await page.evaluate(() => (G.battle.reactions || 0) >= 1), '元素反应「蒸汽爆」触发');
+    await until(() => G.battle.mode !== 'queue', null, 300);
+    for (const ev of ['weather', 'riddle', 'banter', 'roulette', 'dance', 'stars']) {
+      await page.evaluate(() => { const B = G.battle; B.mode = 'menu'; B.lastTalk = null; });
+      ok(await page.evaluate(id => __game.event(id), ev), '随机事件触发：' + ev);
+      await W(700); await S('v5_event_' + ev);
+      // 推进：遇到答题就答对
+      for (let i = 0; i < 80; i++) {
+        const st = await page.evaluate(() => ({ q: !!G.quiz, mode: G.battle && G.battle.mode, ev: !!(G.battle && G.battle.event) }));
+        if (st.q) { if (ev === 'roulette' || ev === 'stars' || ev === 'riddle' || ev === 'dance') { await W(300); await S('v5_event_' + ev + '_quiz'); } await page.evaluate(() => __game.answer(true)); await W(400); await page.evaluate(() => { for (let i = 0; i < 3 && G.quiz; i++) { G.quiz.t = 9; quizContinue(); } }); if (ev === 'roulette') { await W(1100); await S('v5_event_roulette_spin'); } continue; }
+        if (!st.ev && st.mode === 'menu') break;
+        await page.evaluate(() => { const B = G.battle; if (B && B.cur && B.cur.type === 'msg' && B.cur.t > 0.25) { B.cur.chars = 999; B.cur = null; } }); await W(150);
+      }
+      ok(await page.evaluate(() => G.battle.mode === 'menu' && !G.battle.event), '事件结束回到战斗菜单：' + ev);
+    }
+    ok(await page.evaluate(() => G.battle.luckyMul === 2), '幸运转盘答对 → 下一招 ×2');
+    await page.evaluate(() => endBattle('run')); await W(1200);
+  }
+  if (SECT.includes('oculus')) {
+    const o = await page.evaluate(() => { const o = OBJS.find(x => x.type === 'oculus' && x.region === 'meadow'); const n = [[0, 1, 'up'], [0, -1, 'down'], [1, 0, 'left'], [-1, 0, 'right']].find(([dx, dy]) => walkable(o.x + dx, o.y + dy)); __game.teleport(o.x + n[0], o.y + n[1], n[2]); return o.id; });
+    await W(900); await S('v5_oculus_world');
+    for (let i = 0; i < 10 && !(await page.evaluate(() => !!G.quiz)); i++) { await page.keyboard.press('KeyZ'); await W(350); }
+    await W(500); await S('v5_oculus_quiz');
+    for (let i = 0; i < 2; i++) { await page.evaluate(() => __game.answer(true)); await W(400); }
+    await page.evaluate(() => __game.finishQuiz()); await W(400);
+    ok(await page.evaluate(id => !!G.flags.objs[id] && G.flags.oculi >= 1, o), '答对 2 题收集灵瞳');
+    for (let i = 0; i < 3; i++) { await page.keyboard.press('KeyZ'); await W(200); }
+  }
   for (const f of (process.env.EXTRA || '').split(',').filter(Boolean)) await require('./' + f)(global.__ctx);
   ok(errs.length === 0, '无控制台错误' + (errs.length ? '：' + errs.slice(0, 6).join(' | ') : ''));
   await b.close(); process.exit(pass ? 0 : 1);

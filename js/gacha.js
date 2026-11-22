@@ -38,7 +38,7 @@ function doWish(n) {
     if (G.party.length < 6) { G.party.push(m); r.out = '新灵兽！加入队伍'; } else { G.box.push(m); r.out = '新灵兽！已送往灵兽箱'; } r.isNew = true;
   });
   const U = G.wishUI; U.res = res; U.ri = 0; U.phase = 'meteor'; U.t = 0; U.max = Math.max(...res.map(r => r.star));
-  AudioSys.sfx('powerup'); AudioSys.setIntensity(1);
+  AudioSys.sfx('powerup'); AudioSys.setIntensity(1); if (U.max === 5) setTimeout(() => Voice.npc('wish_gold'), 1700);
 }
 function wishInput(k) {
   const U = G.wishUI; if (!U) return;
@@ -66,7 +66,7 @@ function startDaily() {
   const back = G.wishUI; G.wishUI = null;
   startQuiz({ source: 'daily', count: 5, need: 3, title: '每日数学挑战', sub: '5 题答对 3 题：灵晶 ◆80 + 祈愿券 ×1（每天一次）' }, res => {
     F.daily = { date: todayKey(), ok: res.ok || 0 };
-    if (res.pass) { addGems(80, '每日挑战'); F.tickets++; toast('每日挑战成功！获得 ◆80 和祈愿券 ×1'); AudioSys.sfx('levelup'); }
+    if (res.pass) { addGems(80, '每日挑战'); F.tickets++; toast('每日挑战成功！获得 ◆80 和祈愿券 ×1'); AudioSys.sfx('levelup'); Voice.npc('daily_ok'); }
     else { addGems(20, '每日挑战'); toast('这次差一点！安慰奖 ◆20，明天再来挑战吧'); }
     G.wishUI = back;
   });
