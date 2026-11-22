@@ -130,8 +130,8 @@ function partyInput(k) {
     if (k === 'ok') { const o = opts[u.sub.idx]; u.sub = null; if (o === '进化试炼') { const m = G.party[u.idx]; G.partyUI = null; G.menu = null; startEvoTrial(m); } else if (o === '调换顺序') u.sel = u.idx; }
     return;
   }
-  if (k === 'up') { u.idx = (u.idx + n - 1) % n; AudioSys.sfx('move'); }
-  if (k === 'down') { u.idx = (u.idx + 1) % n; AudioSys.sfx('move'); }
+  if (k === 'up') { u.idx = (u.idx + n - 1) % n; AudioSys.sfx('move'); monSelect(G.party[u.idx].sp); }
+  if (k === 'down') { u.idx = (u.idx + 1) % n; AudioSys.sfx('move'); monSelect(G.party[u.idx].sp); }
   const B = G.battle;
   if (k === 'cancel') {
     if (u.mode === 'forced') return;
@@ -218,8 +218,8 @@ function itemIcon(id, x, y) {
 }
 function bagInput(k) {
   const u = G.bagUI, n = ITEM_ORDER.length;
-  if (k === 'up') { u.idx = (u.idx + n - 1) % n; AudioSys.sfx('move'); }
-  if (k === 'down') { u.idx = (u.idx + 1) % n; AudioSys.sfx('move'); }
+  if (k === 'up') { u.idx = (u.idx + n - 1) % n; AudioSys.sfx('move'); monSelect(G.party[u.idx].sp); }
+  if (k === 'down') { u.idx = (u.idx + 1) % n; AudioSys.sfx('move'); monSelect(G.party[u.idx].sp); }
   if (k === 'cancel') { G.bagUI = null; if (G.battle && G.scene === 'battle') G.battle.mode = 'menu'; AudioSys.sfx('cancel'); return; }
   if (k !== 'ok') return;
   const id = ITEM_ORDER[u.idx];

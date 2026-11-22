@@ -12,6 +12,7 @@ function dexInput(k) {
   if (k === 'cancel' || k === 'dex') { G.dexUI = null; AudioSys.sfx('cancel'); return; }
   const mv = { left: -1, right: 1, up: -DEX_COLS, down: DEX_COLS }[k];
   if (mv) { U.idx = clamp(U.idx + mv, 0, n - 1); AudioSys.sfx('move'); }
+  if (k === 'ok') { const sp = DEX_ORDER[U.idx]; if (dexStatus(sp) >= 1) { U.vk = ((U.vk || 0) + 1) % 4; monSay(sp, ['sum', 'sel', 'win', 'ult'][U.vk], 1100, 840); } }
 }
 function drawDexUI() {
   const U = G.dexUI, n = DEX_ORDER.length;
@@ -56,5 +57,7 @@ function drawDexUI() {
   text('招牌技：' + (sig.length ? sig.join('、') : '进化后习得'), dx + 350, 668, 18, '#ffcf5a', 'left', '800');
   text('奥义：' + U2.n.replace('奥义·', ''), dx + 350, 698, 18, '#ff9a5a', 'left', '800');
   wrapText('出没：' + dexWhere(sp), dx + 350, 728, 190, 17, 24, '#7ff0e2', '700');
-  drawHint('方向键 选择　X/Esc 关闭', true);
+  const MV = MON_VOICE[sp], MA = MON_ACT[sp];
+  if (MV) { rrect(dx + 24, 778, 522, 58, 16, 'rgba(255,207,90,0.12)', 'rgba(255,207,90,0.5)', 2); text('口头禅「' + MV.sum[0] + '」', dx + 40, 798, 19, '#ffe9a8', 'left', '800'); text('招牌动作：' + MA.name + '　·　声线：' + VOICE_PROFILES[MV.pf].label, dx + 40, 822, 17, '#cfe0ff', 'left', '700'); }
+  drawHint('方向键 选择　Z 听台词　X/Esc 关闭', true);
 }

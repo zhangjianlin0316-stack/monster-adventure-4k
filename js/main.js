@@ -113,9 +113,9 @@ function starterInput(k) {
     if (k === 'cancel') G.starterConfirm = false;
     return;
   }
-  if (k === 'left') { G.starterIdx = (G.starterIdx + 2) % 3; AudioSys.sfx('move'); }
-  if (k === 'right') { G.starterIdx = (G.starterIdx + 1) % 3; AudioSys.sfx('move'); }
-  if (k === 'ok') { G.starterConfirm = true; AudioSys.sfx('confirm'); }
+  if (k === 'left') { G.starterIdx = (G.starterIdx + 2) % 3; AudioSys.sfx('move'); monSelect(STARTERS[G.starterIdx], 310 + G.starterIdx * 490, 150); }
+  if (k === 'right') { G.starterIdx = (G.starterIdx + 1) % 3; AudioSys.sfx('move'); monSelect(STARTERS[G.starterIdx], 310 + G.starterIdx * 490, 150); }
+  if (k === 'ok') { G.starterConfirm = true; AudioSys.sfx('confirm'); monSay(STARTERS[G.starterIdx], 'sum', 310 + G.starterIdx * 490, 150); }
   if (k === 'cancel') { G.gradeUI = { grade: G.grade, comp: G.comp, row: 0, setup: true }; }
 }
 // ---------- 大地图逻辑 ----------
@@ -326,6 +326,7 @@ function draw() {
   if (G.pickUI && G.scene !== 'battle') drawPickUI();
   if (G.wheel) drawWheel();
   if (G.dialog && G.scene !== 'world') drawDialogBox();
+  drawSay();
   drawTransition();
   if (G.fadeIn > 0) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = 'rgba(8,10,24,' + G.fadeIn + ')'; ctx.fillRect(0, 0, CW, CH); }
   if (G.scene !== 'loading') drawTopButtons();

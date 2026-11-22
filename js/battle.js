@@ -33,7 +33,7 @@ function startBattle(enemy, opts) {
   G.scene = 'battle';
   const R2 = SPECIES[enemy.sp].rar, rarTxt = R2 === 'legend' ? '传说中的' : R2 === 'epic' ? '史诗级的' : R2 === 'rare' ? '稀有的' : '';
   const intro = B.trainer ? [msg(B.trainer.name + '向你发起了数学对决！'), msg(B.trainer.name + '派出了' + nameOf(enemy) + '！')] : [msg(R2 === 'legend' ? '传说灵兽' + nameOf(enemy) + '降临了！' : (enemy.shiny ? '✦闪闪发光的异色' : '') + '野生的' + rarTxt + nameOf(enemy) + '跳出来了！')];
-  Q(...intro, fn(() => { B.showP = true; B.part.add(B.pi); }), anim('send', 'p', 'normal', 0.5), msg('去吧，' + nameOf(active()) + '！'),
+  Q(...intro, ...introSteps('e'), fn(() => { B.showP = true; B.part.add(B.pi); }), anim('send', 'p', 'normal', 0.5), msg('去吧，' + nameOf(active()) + '！'), ...introSteps('p'),
     ...(B.trainer ? [msg('【数学对决】答对题目不仅威力大增，还能压制对手下一次的攻势！')] : []), fn(() => B.mode = 'menu'));
 }
 function battleInput(k) {
@@ -151,11 +151,12 @@ function act(side, moveId, mi, res) {
     if (side === 'p' && mm.text) steps.push(msg(mm.text));
     let weak = 1;
     if (side === 'e' && B.enemyWeak) { weak = 0.6; B.enemyWeak = false; steps.push(msg('你的数学气势压制了对手，' + an + '的攻势减弱了！')); }
+    steps.push(fn(() => monTalk(side, mv.ult ? 'ult' : 'atk', mv.ult ? { force: true } : { chance: 0.45 })));
     steps.push(msg(an + '使用了' + mv.n + '！'));
     const tm = moveTiming(moveId);
     const mk = (extra) => Object.assign({ type: 'anim', kind: 'move', side, move: moveId, mtype: mv.t, dur: tm.dur, cut: tm.cut, H: tm.H }, extra);
     if (Math.random() * 100 >= mv.acc * (side === 'p' && res && res.correct ? 1.15 : 1)) {
-      steps.push(mk({ miss: true }), msg('但是没有命中！'));
+      steps.push(mk({ miss: true }), fn(() => monTalk(os, 'dodge', { force: true })), { type: 'anim', kind: 'dodge', side: os, mtype: 'normal', dur: 0.6 }, msg('但是没有命中！'));
     } else if (mv.p === 0) {
       const a = mk({});
       steps.push(a);
@@ -181,7 +182,11 @@ function act(side, moveId, mi, res) {
       const an2 = mk({ eff, dmg, crit, hits, parts, ko: dmg >= def.hp }); an2.dur += 0.13 * (hits - 1);
       an2.onHit = (amt) => { def.hp = Math.max(G.noKO ? 1 : 0, def.hp - (amt === undefined ? dmg : amt)); };
       if (mv.fx.w) setTimeout(() => { if (G.battle === B) setWeather(B, mv.fx.w, tm.dur + 1.2); }, tm.cut * 1000);
-      steps.push(an2, waitHp());
+      steps.push(an2, waitHp(), fn(() => {
+        if (crit) monTalk(side, 'crit', { force: true });
+        else if (def.hp > 0 && def.hp < stats(def).hp * 0.28 && !(B.lowSaid = B.lowSaid || new Set()).has(def)) { B.lowSaid.add(def); monTalk(os, 'low', { force: true }); }
+        else if (def.hp > 0) monTalk(os, 'hit', { chance: 0.4 });
+      }));
       if (crit) steps.push(msg('击中了要害！'));
       if (eff > 1) steps.push(msg('效果拔群！'));
       if (eff < 1) steps.push(msg('效果不太理想……'));
@@ -218,12 +223,12 @@ function faintCheck(side) {
   if (side === 'e' && B.enemy.hp <= 0 && !B.enemy._fainted) {
     B.enemy._fainted = true; B.over = true;
     const e = B.enemy;
-    QF(anim('faint', 'e', 'normal', 0.9), fn(() => B.showE = false), msg((B.trainer ? '对手的' : '野生的') + nameOf(e) + '倒下了！'), fn(() => awardXP(e)));
+    QF(fn(() => monTalk('e', 'ko', { force: true })), anim('faint', 'e', 'normal', 0.9), fn(() => B.showE = false), msg((B.trainer ? '对手的' : '野生的') + nameOf(e) + '倒下了！'), fn(() => awardXP(e)));
   }
   if (side === 'p' && active().hp <= 0 && !active()._fainting) {
     B.over = true;
     const p = active(); p._fainting = true;
-    QF(anim('faint', 'p', 'normal', 0.9), fn(() => { B.showP = false; p._fainting = false; p.status = null; }), msg(nameOf(p) + '倒下了！'), fn(() => {
+    QF(fn(() => monTalk('p', 'ko', { force: true })), anim('faint', 'p', 'normal', 0.9), fn(() => { B.showP = false; p._fainting = false; p.status = null; }), msg(nameOf(p) + '倒下了！'), fn(() => {
       B.queue.length = 0;
       if (G.party.some(m => m.hp > 0)) {
         Q(msg('请选择下一只出战的灵兽。'), fn(() => { B.mode = 'party'; G.partyUI = { idx: G.party.findIndex(m => m.hp > 0), mode: 'forced', sel: null }; }));
@@ -249,7 +254,7 @@ function afterEnemyDown() {
   const B = G.battle;
   if (B.trainer && B.team.length) {
     const nx = B.team.shift(); nx.dhp = nx.hp;
-    QF(msg(B.trainer.name + '派出了' + nameOf(nx) + '！'), fn(() => { B.enemy = nx; B.showE = true; B.over = false; B.stages.e = { atk: 0, def: 0, spd: 0 }; }), anim('send', 'e', 'normal', 0.5), fn(endTurn));
+    QF(msg(B.trainer.name + '派出了' + nameOf(nx) + '！'), fn(() => { B.enemy = nx; B.showE = true; B.over = false; B.stages.e = { atk: 0, def: 0, spd: 0 }; }), anim('send', 'e', 'normal', 0.5), ...introSteps('e'), fn(endTurn));
     return;
   }
   B.victory = true;
@@ -257,6 +262,7 @@ function afterEnemyDown() {
     const T0 = B.trainer; const st = T0.stars || 8;
     QF(msg('你赢得了与' + T0.name + '的数学对决！'), fn(() => { addStars(st); G.flags.objs[T0.id] = 1; }), msg('获得了 ★' + st + ' 颗星星！'), fn(() => endBattle('win')));
   } else QF(fn(() => endBattle('win')));
+  QF(fn(() => monTalk('p', 'win', { force: true })), { type: 'anim', kind: 'sig', side: 'p', mtype: 'normal', dur: 1.3 }, fn(() => showActName('p')));
 }
 function gainXP(m, amt, main) {
   m.xp += amt;
@@ -287,7 +293,7 @@ function battleSwitch(idx, forced) {
   const old = active();
   B.stages.p = { atk: 0, def: 0, spd: 0 };
   if (!forced) Q(msg('回来吧，' + nameOf(old) + '！'), anim('recall', 'p', 'normal', 0.35), fn(() => { B.showP = false; }));
-  Q(fn(() => { B.pi = idx; B.showP = true; B.over = false; B.part.add(idx); }), anim('send', 'p', 'normal', 0.5), msg('去吧，' + nameOf(G.party[idx]) + '！'));
+  Q(fn(() => { B.pi = idx; B.showP = true; B.over = false; B.part.add(idx); }), anim('send', 'p', 'normal', 0.5), msg('去吧，' + nameOf(G.party[idx]) + '！'), ...introSteps('p'));
   if (!forced) Q(act('e', enemyMove()), fn(endOfTurn));
   Q(fn(endTurn));
 }
@@ -368,6 +374,7 @@ function updateBattle(dt) {
     if (m.dhp > m.hp) m.dhp = Math.max(m.hp, m.dhp - sp); else if (m.dhp < m.hp) m.dhp = Math.min(m.hp, m.dhp + sp);
   });
   if (B.lvPanel) B.lvPanel.t += dt;
+  updateBubbles(B, dt);
   if (B.slow > 0) { B.slow -= dt; dt *= 0.28; }
   if (B.mode !== 'queue') return;
   if (B.hitStop > 0) { B.hitStop -= dt; return; }
@@ -462,7 +469,9 @@ function drawBattle() {
     if (A.kind === 'recall' || A.kind === 'absorb') { o.scale = Math.max(0.01, 1 - at); o.flash = Math.min(1, at * 2); }
     if (A.kind === 'levelup' || A.kind === 'heal') { o.flash = Math.sin(at * Math.PI) * 0.5; }
     if (A.kind === 'status') { o.x = Math.sin(at * 50) * 8 * (1 - at); o.flash = Math.sin(at * Math.PI) * 0.3; }
+    if (A.kind === 'sig' || A.kind === 'dodge' || A.kind === 'taunt' || A.kind === 'dance' || A.kind === 'cheer') lifePose(A, o, at, dirx, B, P);
   }
+  if (!stopped) { if (!A || A.side !== 'p' || A.kind === 'none') lifeIdle(B, 'p', po, dt); if (!A || A.side !== 'e' || A.kind === 'none') lifeIdle(B, 'e', eo, dt); }
   // 受击反应：顿帧 + 击退 + 闪白 + 挤压
   ['p', 'e'].forEach(sd => {
     const r = B.react[sd]; if (!r) return; if (!stopped) r.t += dt; const o = off(sd);
@@ -525,6 +534,7 @@ function drawBattle() {
   }
   drawParticles(stopped ? 0 : dt, true);
   drawRingsStars(B, dt);
+  drawBubbles(B, P);
   // 天气 / 闪光 / 速度线 / 暗角
   drawWeather(B, dt);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -539,6 +549,7 @@ function drawBattle() {
   if (cinematic) drawCutInV4(B, A, A.t);
   drawStamps(B, dt);
   drawComboCounter(B, dt);
+  drawActName(B); drawUltLine(B, cinematic);
   const uiIn = clamp((B.t - 0.9) / 0.5, 0, 1) * (cinematic ? 0 : 1), ue = 1 - Math.pow(1 - uiIn, 3);
   if (B.showE || (A && A.kind === 'faint' && A.side === 'e')) {
     const x = 50 - (1 - ue) * 640;
@@ -583,6 +594,7 @@ function drawBattle() {
     text(B.asked ? '本场 ' + B.correct + '/' + B.asked : (B.trainer ? '数学对决' : '野生战斗'), 1540 + (1 - ue) * 400, 76, 22, '#aab8dd', 'right', '700');
     ctx.globalAlpha = 1;
   }
+  drawBubblesUI(B);
   if (B.lvPanel) drawLvPanel(B.lvPanel);
   // 底部面板
   const py = 724 + (1 - ue) * 220;
